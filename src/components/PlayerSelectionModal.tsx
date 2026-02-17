@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Team, Player } from '../types';
-import { X, User } from 'lucide-react';
+import { X } from 'lucide-react';
 import { JerseyNumber } from './JerseyNumber';
 
 interface Props {
