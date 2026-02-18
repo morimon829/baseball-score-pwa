@@ -390,24 +390,21 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                         className="flex-1 flex flex-col items-start hover:bg-blue-800 rounded p-1 -ml-1 text-left"
                     >
                         <div className="text-xs opacity-80 flex items-center gap-2 flex-wrap">
-                            <span>
-                                {game.date ? (() => {
-                                    const d = new Date(game.date);
-                                    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-                                })() : '日付未定'}
-                            </span>
-                            {game.location && <span>@ {game.location}</span>}
                             {/* Umpire Info Display */}
                             {(game.umpires?.main || game.umpires?.base1) && (
-                                <span className="flex items-center gap-1 border-l border-white/30 pl-2 ml-1">
-                                    <User size={10} />
-                                    <span>PL:{game.umpires.main || '-'}</span>
+                                <div className="flex flex-col ml-2 border-l border-white/30 pl-2 text-xs opacity-90">
+                                    <div className="flex items-center gap-2">
+                                        <User size={12} />
+                                        <span className="font-bold">主審: {game.umpires.main || '-'}</span>
+                                    </div>
                                     {(game.umpires.base1 || game.umpires.base2 || game.umpires.base3) && (
-                                        <span className="text-[10px] opacity-80">
-                                            (塁: {game.umpires.base1}/{game.umpires.base2}/{game.umpires.base3})
-                                        </span>
+                                        <div className="flex gap-2 text-[11px] mt-0.5">
+                                            <span>一塁: {game.umpires.base1 || '-'}</span>
+                                            <span>二塁: {game.umpires.base2 || '-'}</span>
+                                            <span>三塁: {game.umpires.base3 || '-'}</span>
+                                        </div>
                                     )}
-                                </span>
+                                </div>
                             )}
                         </div>
                         <div className="text-lg md:text-xl font-bold flex items-center gap-3">
