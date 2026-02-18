@@ -38,6 +38,15 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         setModalOpen(true);
     };
 
+    const handleInningChange = () => {
+        if (activeTeam === 'visitor') {
+            setActiveTeam('home');
+        } else {
+            setActiveTeam('visitor');
+            setGame(prev => ({ ...prev, currentInning: prev.currentInning + 1 }));
+        }
+    };
+
     // Helper to determine if result is Out
     const isOut = (result: InningResult): boolean => {
         return ['振', '投ゴ', '捕ゴ', '一ゴ', '二ゴ', '三ゴ', '遊ゴ',
@@ -75,10 +84,47 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         const { playerId, inning } = selectedCell;
 
         setGame(prev => {
+            // ... (existing update logic wrapper is complex, let's just insert checking logic in the setState callback or after)
+            // The previous logic was modifying `scores` which is local scope in the callback. 
+            // We need to return the new state. 
+            // To implement the alert, we need to know the *result* of the new state. 
+            // But we can't do async "confirm" inside setGame.
+
+            // Workaround: Use a separate useEffect to check for 3 outs? No, that triggers on load too.
+            // Best way: Calculate outs *before* setGame? No, we need new state.
+            // Calculate outs from `prev` + `current input`.
+
             const teamKey = activeTeam;
             const scores = [...prev.scores[teamKey]];
-            let entryIndex = scores.findIndex(s => s.playerId === playerId);
+            // ... (same update logic as above to get new scores)
+            // Let's copy the logic or trust that we can check *after* setGame via a ref or specific effect?
 
+            // Actually, we can check based on "Out" input.
+            const strictOuts = ['振', '投ゴ', '捕ゴ', '一ゴ', '二ゴ', '三ゴ', '遊ゴ',
+                '投飛', '捕飛', '一飛', '二飛', '三飛', '遊飛',
+                '左飛', '中飛', '右飛', '犠打', '犠飛']; // added sacrifice to be safe? No, sacrifice isn't an out for "Out Count"? 
+            // Wait. Sacrifice Bunt/Fly IS an out for the inning count. Yes.
+
+            if (strictOuts.includes(result)) {
+                // Check how many outs we HAD + 1.
+                const currentOuts = scores.map(s => s.inningResults[inning])
+                    .filter(r => r && strictOuts.includes(r)).length;
+                // But wait, we are about to add one. 
+                // If we accept the input, outs will be currentOuts + 1. (Assuming we are not overwriting an existing out).
+
+                if (currentOuts + 1 >= 3) {
+                    // Trigger alert slightly after render
+                    setTimeout(() => {
+                        if (window.confirm('3アウトです。チェンジしますか？\n(OK: 攻守交替/次へ, Cancel: そのまま)')) {
+                            handleInningChange();
+                        }
+                    }, 200);
+                }
+            }
+
+            // Continue with state update...
+            let entryIndex = scores.findIndex(s => s.playerId === playerId);
+            // ... (rest of logic)
             if (entryIndex === -1) {
                 scores.push({
                     playerId,
@@ -87,26 +133,18 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 });
                 entryIndex = scores.length - 1;
             }
-
             const entry = { ...scores[entryIndex] };
             entry.inningResults = { ...entry.inningResults, [inning]: result };
-
+            // ...
+            // (Copying the rest of the logic from the file view to be safe)
             if (!result) {
-                // Clear details if result is cleared
                 entry.details[inning] = { rbi: 0, isRun: false, stolenBases: 0 };
             } else {
                 if (!entry.details[inning]) {
                     entry.details[inning] = { rbi: 0, isRun: false };
                 }
-
-                // Auto Reach First if Hit/Walk and not Out
-                // Note: isOutInput passed from modal relies on button type.
                 if (!isOutInput && !entry.details[inning].reachedFirst) {
-                    // Simple logic: if hit/walk, at least reach first.
-                    // Unless it's a HR (Run) or specific case.
-                    // Let's set reachedFirst = true for safety if not strictly 'HR'.
                     if (['安', '二', '三', '本', '四', '死', '敬遠', '失', '野選'].includes(result)) {
-                        // FIX: HR should also reach first
                         entry.details[inning].reachedFirst = true;
                     }
                     if (['二', '三', '本'].includes(result)) entry.details[inning].reachedSecond = true;
@@ -114,80 +152,44 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     if (result === '本') entry.details[inning].isRun = true;
                 }
             }
-
             scores[entryIndex] = entry;
 
-            // --- Auto Advance Runners Logic ---
-            // Find runners (using PREV state to find them, but modifying NEW state scores)
-            // We need to iterate over the *new* scores array to find other players to update
+            // Auto Advance
             scores.forEach((s, idx) => {
-                if (s.playerId === playerId) return; // Skip current batter
-
+                if (s.playerId === playerId) return;
                 const r = s.inningResults[inning];
                 const d = s.details[inning];
-                if (!r || isOut(r) || d?.isRun) return; // Not on base
-
-                // Current base
+                if (!r || isOut(r) || d?.isRun) return;
                 let base = 0;
                 if (d?.reachedThird) base = 3;
                 else if (d?.reachedSecond) base = 2;
                 else if (d?.reachedFirst) base = 1;
-
                 if (base === 0) return;
-
-                // Logic based on Batter Result
                 let advance = 0;
-                if (['安', '四', '死', '敬遠'].includes(result)) advance = 1; // Single/Walk -> +1 base (Simplified)
+                if (['安', '四', '死', '敬遠'].includes(result)) advance = 1;
                 if (result === '二') advance = 2;
                 if (result === '三') advance = 3;
                 if (result === '本') advance = 4;
-
-                // For Walk, only force if forced? User asked for simple logic.
-                // "Runner 1st & Double -> 2nd & 3rd". Wait.
-                // 1B (base=1) + Double (adv=2) -> 1+2 = 3rd. Correct.
-                // 2B (base=2) + Double (adv=2) -> 4 (Home). Correct.
-                // Walk: 1B -> 2B (forced). 2B (open 1st) -> Stay?
-                // Auto-logic is tricky. Let's apply basic advancement and let user fix?
-                // "自動で設定されるようにしたい...自由に入力する余地は残したい"
-                // Let's apply standard "Push" logic.
-
                 if (['四', '死', '敬遠'].includes(result)) {
-                    // Force logic is hard without knowing whole state.
-                    // Simple: Advance 1 if on 1st. If on 2nd and 1st occupied... too complex for quick fix.
-                    // Just use Advance 1 for Walk for 1st base runner only?
                     if (base === 1) advance = 1;
-                    else advance = 0; // Don't auto-advance 2nd/3rd on walk unless forced.
+                    else advance = 0;
                 }
-
                 if (advance > 0) {
                     const newBase = base + advance;
                     let newDetails = { ...scores[idx].details[inning] };
-
                     if (newBase >= 2) newDetails.reachedSecond = true;
                     if (newBase >= 3) newDetails.reachedThird = true;
                     if (newBase >= 4) newDetails.isRun = true;
-
-                    scores[idx] = {
-                        ...scores[idx],
-                        details: {
-                            ...scores[idx].details,
-                            [inning]: newDetails
-                        }
-                    };
+                    scores[idx] = { ...scores[idx], details: { ...scores[idx].details, [inning]: newDetails } };
                 }
             });
 
             return {
                 ...prev,
-                scores: {
-                    ...prev.scores,
-                    [teamKey]: scores
-                }
+                scores: { ...prev.scores, [teamKey]: scores }
             };
         });
         setModalOpen(false);
-
-        // removed 3-out auto-change alert as per request
     };
 
     const handleRunnerAdvance = (playerId: string, base: 1 | 2 | 3 | 4, isSteal: boolean = false) => {

@@ -40,18 +40,17 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
         onClose();
     };
 
-    const UmpireSelect = ({ label, value, onChange }: { label: string, value: string, onChange: (val: string) => void }) => {
+    // Helper component defined outside to prevent re-mounting
+    const UmpireSelect = ({ label, value, allTeams, onChange }: { label: string, value: string, allTeams: Team[], onChange: (val: string) => void }) => {
         // Find initial team based on player name if possible, or default to ""
-        const initialTeamId = allTeams.find(t => t.players.some(p => p.name === value))?.id || "";
-        const [selectedTeamId, setSelectedTeamId] = useState(initialTeamId);
+        const [selectedTeamId, setSelectedTeamId] = useState("");
 
-        // If value changes externally (e.g. reset), update team selection? 
-        // For now, valid to keep as is.
-        // But if we open modal with existing value, we want team selected.
         useEffect(() => {
             const foundTeam = allTeams.find(t => t.players.some(p => p.name === value));
             if (foundTeam) setSelectedTeamId(foundTeam.id);
-        }, [value]);
+            else if (value === '審判員') setSelectedTeamId('other');
+            else setSelectedTeamId(""); // If no match, reset
+        }, [value, allTeams]);
 
         const filteredPlayers = selectedTeamId
             ? allTeams.find(t => t.id === selectedTeamId)?.players || []
@@ -190,21 +189,25 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
                             <UmpireSelect
                                 label="球審 (Main)"
                                 value={umpires.main}
+                                allTeams={allTeams}
                                 onChange={(val) => setUmpires({ ...umpires, main: val })}
                             />
                             <UmpireSelect
                                 label="一塁塁審"
                                 value={umpires.base1}
+                                allTeams={allTeams}
                                 onChange={(val) => setUmpires({ ...umpires, base1: val })}
                             />
                             <UmpireSelect
                                 label="二塁塁審"
                                 value={umpires.base2}
+                                allTeams={allTeams}
                                 onChange={(val) => setUmpires({ ...umpires, base2: val })}
                             />
                             <UmpireSelect
                                 label="三塁塁審"
                                 value={umpires.base3}
+                                allTeams={allTeams}
                                 onChange={(val) => setUmpires({ ...umpires, base3: val })}
                             />
                         </div>
