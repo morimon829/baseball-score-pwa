@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import type { Game, InningResult, Player } from '../types';
 import { InputModal } from './InputModal';
+import { GameInfoModal } from './GameInfoModal';
 import { PlayerSelectionModal } from './PlayerSelectionModal';
 import { JerseyNumber } from './JerseyNumber';
 import { ScorebookCell } from './ScorebookCell';
 import { calculateStats } from '../utils/calculator';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Clock } from 'lucide-react';
 import { saveGame } from '../utils/storage';
 import { clsx } from 'clsx';
 import { generatePDF } from '../utils/pdfGenerator';
@@ -20,6 +21,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     const [game, setGame] = useState<Game>(initialGame);
     const [activeTeam, setActiveTeam] = useState<'visitor' | 'home'>('visitor');
     const [modalOpen, setModalOpen] = useState(false);
+    const [gameInfoModalOpen, setGameInfoModalOpen] = useState(false);
     const [selectedCell, setSelectedCell] = useState<{ playerId: string, inning: number } | null>(null);
 
     // Player Selection State
@@ -184,6 +186,34 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             };
         });
         setModalOpen(false);
+
+        // Check for 3 Outs after update (Need to calculate based on new state, or just check current+1 if this was an out?)
+        // Since setGame is async/batched, we can't see new state yet.
+        // We can predict.
+        if (isOutInput) { // result passed from InputModal isOutInput logic relies on button type
+            // Actually InputModal passes isOutInput based on 'Out' category buttons.
+            // We need to count existing outs + 1.
+            const currentOutsCount = (activeTeam === 'visitor' ? game.scores.visitor : game.scores.home)
+                .map(s => s.inningResults[selectedCell.inning])
+                .filter(r => r && isOut(r)).length;
+
+            if (currentOutsCount + 1 >= 3) {
+                setTimeout(() => {
+                    if (confirm('3アウトです。チェンジしますか？\n(OK: 次の攻撃へ移動, Cancel: そのまま)')) {
+                        handleInningChange();
+                    }
+                }, 100);
+            }
+        }
+    };
+
+    const handleInningChange = () => {
+        if (activeTeam === 'visitor') {
+            setActiveTeam('home');
+        } else {
+            setActiveTeam('visitor');
+            setGame(prev => ({ ...prev, currentInning: prev.currentInning + 1 }));
+        }
     };
 
     const handleRunnerAdvance = (playerId: string, base: 1 | 2 | 3 | 4, isSteal: boolean = false) => {
@@ -294,6 +324,40 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         setPlayerModalOpen(false);
     };
 
+    const handleErrorClick = (playerId: string) => {
+        setGame(prev => {
+            const teamKey = activeTeam;
+            const scores = [...prev.scores[teamKey]];
+            let entryIndex = scores.findIndex(s => s.playerId === playerId);
+
+            if (entryIndex === -1) {
+                scores.push({
+                    playerId,
+                    inningResults: {},
+                    details: {},
+                    defensiveErrors: 1
+                });
+            } else {
+                const entry = { ...scores[entryIndex] };
+                entry.defensiveErrors = (entry.defensiveErrors || 0) + 1;
+                // Simple cycle? 0 -> 1 -> 2 ... -> 0? Or just increment? 
+                // User asked for "Input". Increment is standard. 
+                // Context menu for decrement? Or just cycle for simplicity?
+                // Let's cycle 0->1->2->3->0 for now to allow correction without complex UI.
+                if (entry.defensiveErrors > 9) entry.defensiveErrors = 0;
+                scores[entryIndex] = entry;
+            }
+
+            return {
+                ...prev,
+                scores: {
+                    ...prev.scores,
+                    [teamKey]: scores
+                }
+            };
+        });
+    };
+
     const currentLineup = activeTeam === 'visitor' ? game.visitorLineup : game.homeLineup;
     const currentScores = activeTeam === 'visitor' ? game.scores.visitor : game.scores.home;
 
@@ -304,6 +368,26 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
     const innings = Array.from({ length: totalInnings }, (_, i) => i + 1);
 
+    // Calculate Current Outs (for game.currentInning)
+    const currentOuts = currentScores
+        .map(s => s.inningResults[game.currentInning])
+        .filter(r => r && isOut(r)).length;
+
+    // Check for 3 Outs
+    useEffect(() => {
+        if (currentOuts >= 3) {
+            // Check if already handled? No usually re-render triggers this.
+            // We don't want to spam alerts.
+            // But we can't easily track "Alerted for this inning".
+            // Let's use a timeout or just show a Toast?
+            // "Confirm" dialog is blocking and bad in useEffect.
+            // Let's just allow user to click a "Change" button that appears?
+            // Or maybe handling it in setGame is better? 
+            // setGame is in handleInput.
+            // Let's move this logic to handleInput to be triggered ONCE when the 3rd out is made.
+        }
+    }, [currentOuts, game.currentInning, activeTeam]);
+
     return (
         <div className="bg-white min-h-screen flex flex-col" id="score-sheet-container">
             {/* Header */}
@@ -312,11 +396,31 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     <button onClick={onBack} className="p-2 mr-2 hover:bg-blue-800 rounded">
                         <ArrowLeft />
                     </button>
-                    <div className="text-sm md:text-base font-bold">
-                        {game.date} | {game.teams.visitor.name} vs {game.teams.home.name}
+                    <div className="flex flex-col">
+                        <div className="text-sm md:text-base font-bold flex items-center gap-2">
+                            {game.teams.visitor.name} vs {game.teams.home.name}
+                        </div>
+                        <button
+                            onClick={() => setGameInfoModalOpen(true)}
+                            className="text-xs flex items-center hover:bg-blue-800 rounded px-1 -ml-1"
+                        >
+                            <Clock size={12} className="mr-1" />
+                            {game.date} {game.startTime ? `${game.startTime} ~` : ''} {game.endTime}
+                        </button>
                     </div>
                 </div>
-                <div>
+
+                {/* Out Count & Inning Info */}
+                <div className="flex items-center space-x-4">
+                    <div className="flex items-center bg-black/20 rounded px-2 py-1">
+                        <span className="font-bold text-xl mr-2">{game.currentInning}回{activeTeam === 'visitor' ? '表' : '裏'}</span>
+                        <div className="flex space-x-1">
+                            <span className={clsx("w-3 h-3 rounded-full border border-white", currentOuts >= 1 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
+                            <span className={clsx("w-3 h-3 rounded-full border border-white", currentOuts >= 2 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
+                        </div>
+                        <span className="text-xs ml-1 font-bold">OUT</span>
+                    </div>
+
                     <button
                         onClick={() => generatePDF(game)}
                         className="bg-green-600 px-3 py-1 rounded text-sm hover:bg-green-500 flex items-center"
@@ -357,7 +461,8 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                         <div className="w-12 p-2 text-center border-r border-gray-300">安打</div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">得点</div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">打点</div>
-                        <div className="w-12 p-2 text-center">盗塁</div>
+                        <div className="w-12 p-2 text-center border-r border-gray-300">盗塁</div>
+                        <div className="w-12 p-2 text-center">失策</div>
                     </div>
 
                     {/* Rows */}
@@ -416,7 +521,13 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                 <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50 text-red-600">{stats.hits}</div>
                                 <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50">{stats.runs}</div>
                                 <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50">{stats.rbi}</div>
-                                <div className="w-12 p-2 text-center font-bold bg-gray-50 text-blue-600">{stats.stolenBases}</div>
+                                <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50 text-blue-600">{stats.stolenBases}</div>
+                                <div
+                                    className="w-12 p-2 text-center font-bold bg-gray-50 cursor-pointer hover:bg-gray-200"
+                                    onClick={() => handleErrorClick(player.id)}
+                                >
+                                    {stats.errors}
+                                </div>
                             </div>
                         );
                     })}
@@ -437,19 +548,20 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                             <thead>
                                 <tr className="border-b">
                                     <th className="p-2 text-left">氏名</th>
-                                    <th className="p-2 w-16">回数</th>
+                                    <th className="p-2 w-14">回数</th>
+                                    <th className="p-2 w-12">自責</th>
                                     <th className="p-2 w-16">勝敗</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {[0, 1, 2, 3].map(idx => {
                                     const records = game.pitcherRecords?.[activeTeam] || [];
-                                    const entry = records[idx] || { id: '', name: '', innings: '', result: '' };
+                                    const entry = records[idx] || { id: '', name: '', innings: '', er: 0, result: '' };
 
-                                    const updatePitcher = (field: keyof typeof entry, value: string) => {
+                                    const updatePitcher = (field: keyof typeof entry, value: string | number) => {
                                         setGame(prev => {
                                             const newRecords = [...(prev.pitcherRecords?.[activeTeam] || [])];
-                                            while (newRecords.length <= idx) newRecords.push({ id: '', name: '', innings: '', result: '' });
+                                            while (newRecords.length <= idx) newRecords.push({ id: '', name: '', innings: '', er: 0, result: '' });
 
                                             newRecords[idx] = { ...newRecords[idx], [field]: value };
                                             return {
@@ -462,16 +574,22 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                         });
                                     };
 
+                                    // Filter players to show only active team's players
+                                    const teamPlayers = activeTeam === 'visitor' ? game.teams.visitor.players : game.teams.home.players;
+
                                     return (
                                         <tr key={idx} className="border-b last:border-0">
                                             <td className="p-1">
-                                                <input
-                                                    type="text"
-                                                    className="w-full border rounded p-1"
-                                                    placeholder={idx === 0 ? "先発" : "救援"}
+                                                <select
+                                                    className="w-full border rounded p-1 text-sm bg-white"
                                                     value={entry.name}
                                                     onChange={e => updatePitcher('name', e.target.value)}
-                                                />
+                                                >
+                                                    <option value="">{idx === 0 ? "先発" : "救援"}</option>
+                                                    {teamPlayers.map(p => (
+                                                        <option key={p.id} value={p.name}>{p.name}</option>
+                                                    ))}
+                                                </select>
                                             </td>
                                             <td className="p-1">
                                                 <input
@@ -479,6 +597,14 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                                     className="w-full border rounded p-1 text-center"
                                                     value={entry.innings}
                                                     onChange={e => updatePitcher('innings', e.target.value)}
+                                                />
+                                            </td>
+                                            <td className="p-1">
+                                                <input
+                                                    type="number"
+                                                    className="w-full border rounded p-1 text-center"
+                                                    value={entry.er || ''}
+                                                    onChange={e => updatePitcher('er', Number(e.target.value))}
                                                 />
                                             </td>
                                             <td className="p-1 text-center">
@@ -531,6 +657,15 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             <div className="p-2 bg-gray-100 flex justify-end text-xs text-gray-500">
                 ※ スコアを入力するには枠をタップしてください
             </div>
+
+            {gameInfoModalOpen && (
+                <GameInfoModal
+                    game={game}
+                    teams={game.teams}
+                    onSave={(updates) => setGame(prev => ({ ...prev, ...updates }))}
+                    onClose={() => setGameInfoModalOpen(false)}
+                />
+            )}
         </div >
     );
 };
