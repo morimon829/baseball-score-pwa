@@ -390,6 +390,14 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                         className="flex-1 flex flex-col items-start hover:bg-blue-800 rounded p-1 -ml-1 text-left"
                     >
                         <div className="text-xs opacity-80 flex items-center gap-2 flex-wrap">
+                            <span>
+                                {game.date ? (() => {
+                                    const d = new Date(game.date);
+                                    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                                })() : '日付未定'}
+                            </span>
+                            {game.location && <span>@ {game.location}</span>}
+
                             {/* Umpire Info Display */}
                             {(game.umpires?.main || game.umpires?.base1) && (
                                 <div className="flex flex-col ml-2 border-l border-white/30 pl-2 text-xs opacity-90">
