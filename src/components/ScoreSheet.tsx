@@ -387,41 +387,45 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
                     <button
                         onClick={() => setGameInfoModalOpen(true)}
-                        className="flex-1 flex flex-col items-start hover:bg-blue-800 rounded p-1 -ml-1 text-left"
+                        className="flex-1 flex items-center hover:bg-blue-800 rounded p-1 -ml-1 text-left"
                     >
-                        <div className="text-xs opacity-80 flex items-center gap-2 flex-wrap">
-                            <span>
-                                {game.date ? (() => {
-                                    const d = new Date(game.date);
-                                    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-                                })() : '日付未定'}
-                            </span>
-                            {game.location && <span>@ {game.location}</span>}
+                        <div className="flex flex-col flex-1">
+                            <div className="text-xs opacity-80 flex items-center gap-2 flex-wrap">
+                                <span>
+                                    {game.date ? (() => {
+                                        const d = new Date(game.date);
+                                        return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                                    })() : '日付未定'}
+                                </span>
+                                {game.location && <span>@ {game.location}</span>}
+                            </div>
+                            <div className="text-lg md:text-xl font-bold flex items-center gap-3">
+                                <span>{game.teams.visitor.name} vs {game.teams.home.name}</span>
+                                <span className="text-sm font-normal opacity-90 flex items-center">
+                                    <Clock size={14} className="mr-1" />
+                                    {game.startTime || '--:--'} ~ {game.endTime || '--:--'}
+                                </span>
+                            </div>
+                        </div>
 
-                            {/* Umpire Info Display */}
-                            {(game.umpires?.main || game.umpires?.base1) && (
-                                <div className="flex flex-col ml-2 border-l border-white/30 pl-2 text-xs opacity-90">
-                                    <div className="flex items-center gap-2">
-                                        <User size={12} />
+                        {/* Umpire Info Display - Right Side */}
+                        {(game.umpires?.main || game.umpires?.base1) && (
+                            <div className="flex items-center ml-2 border-l border-white/30 pl-3 py-1">
+                                <div className="flex flex-col justify-center text-sm opacity-90">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <User size={14} />
                                         <span className="font-bold">主審: {game.umpires.main || '-'}</span>
                                     </div>
                                     {(game.umpires.base1 || game.umpires.base2 || game.umpires.base3) && (
-                                        <div className="flex gap-2 text-[11px] mt-0.5">
-                                            <span>一塁: {game.umpires.base1 || '-'}</span>
-                                            <span>二塁: {game.umpires.base2 || '-'}</span>
-                                            <span>三塁: {game.umpires.base3 || '-'}</span>
+                                        <div className="flex gap-2 text-xs opacity-90">
+                                            <span>一: {game.umpires.base1 || '-'}</span>
+                                            <span>二: {game.umpires.base2 || '-'}</span>
+                                            <span>三: {game.umpires.base3 || '-'}</span>
                                         </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                        <div className="text-lg md:text-xl font-bold flex items-center gap-3">
-                            <span>{game.teams.visitor.name} vs {game.teams.home.name}</span>
-                            <span className="text-sm font-normal opacity-90 flex items-center">
-                                <Clock size={14} className="mr-1" />
-                                {game.startTime || '--:--'} ~ {game.endTime || '--:--'}
-                            </span>
-                        </div>
+                            </div>
+                        )}
                     </button>
                 </div>
 

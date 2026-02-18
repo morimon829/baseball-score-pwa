@@ -141,7 +141,7 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
                                             className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200"
                                             title="現在時刻"
                                         >
-                                            <Clock size={16} />
+                                            <span className="px-1 text-xs font-bold whitespace-nowrap">現在</span>
                                         </button>
                                     </div>
                                 </div>
@@ -160,7 +160,7 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
                                             className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200"
                                             title="現在時刻"
                                         >
-                                            <Clock size={16} />
+                                            <span className="px-1 text-xs font-bold whitespace-nowrap">現在</span>
                                         </button>
                                     </div>
                                 </div>
