@@ -3,9 +3,10 @@ import { TeamManager } from './components/TeamManager';
 import { ScoreSheet } from './components/ScoreSheet';
 import { Home } from './components/Home';
 import { GameList } from './components/GameList';
+import { DataManager } from './components/DataManager';
 import type { Game } from './types';
 
-type View = 'home' | 'teams' | 'game' | 'history';
+type View = 'home' | 'teams' | 'game' | 'history' | 'data';
 
 function App() {
   const [view, setView] = useState<View>('home');
@@ -30,6 +31,7 @@ function App() {
         <Home
           onNavigateTeams={() => setView('teams')}
           onNavigateHistory={() => setView('history')}
+          onNavigateData={() => setView('data')}
           onStartGame={handleStartGame}
         />
       )}
@@ -43,6 +45,10 @@ function App() {
           onSelectGame={handleStartGame}
           onBack={() => setView('home')}
         />
+      )}
+
+      {view === 'data' && (
+        <DataManager onBack={() => setView('home')} />
       )}
 
       {view === 'game' && currentGame && (

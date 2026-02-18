@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { loadTeams } from '../utils/storage';
 import type { Team, Game } from '../types';
-import { Users, PlayCircle, Calendar } from 'lucide-react';
+import { Users, PlayCircle, Calendar, Database } from 'lucide-react';
 
 interface Props {
     onNavigateTeams: () => void;
     onNavigateHistory?: () => void;
+    onNavigateData?: () => void;
     onStartGame: (game: Game) => void;
 }
 
-export const Home: React.FC<Props> = ({ onNavigateTeams, onNavigateHistory, onStartGame }) => {
+export const Home: React.FC<Props> = ({ onNavigateTeams, onNavigateHistory, onNavigateData, onStartGame }) => {
     const [teams, setTeams] = useState<Team[]>([]);
     const [visitorId, setVisitorId] = useState('');
     const [homeId, setHomeId] = useState('');
@@ -96,6 +97,13 @@ export const Home: React.FC<Props> = ({ onNavigateTeams, onNavigateHistory, onSt
                 className="w-full bg-white p-4 rounded-xl shadow border border-gray-200 flex items-center justify-center font-bold text-gray-700 hover:bg-gray-50 text-lg"
             >
                 <Calendar className="mr-2" /> 試合履歴
+            </button>
+
+            <button
+                onClick={() => onNavigateData?.()}
+                className="w-full bg-white p-4 rounded-xl shadow border border-gray-200 flex items-center justify-center font-bold text-gray-700 hover:bg-gray-50 text-lg"
+            >
+                <Database className="mr-2" /> データ管理
             </button>
 
             <div className="text-center text-gray-400 text-sm mt-8">
