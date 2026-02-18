@@ -83,6 +83,38 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         if (!selectedCell) return;
         const { playerId, inning } = selectedCell;
 
+        // --- 3-Out Check Logic (Moved outside setGame to avoid double-trigger) ---
+        const strictOuts = ['振', '投ゴ', '捕ゴ', '一ゴ', '二ゴ', '三ゴ', '遊ゴ',
+            '投飛', '捕飛', '一飛', '二飛', '三飛', '遊飛',
+            '左飛', '中飛', '右飛', '犠打', '犠飛'];
+
+        if (strictOuts.includes(result)) {
+            const currentScores = activeTeam === 'visitor' ? game.scores.visitor : game.scores.home;
+            // Calculate outs BEFORE this new input
+            const currentOuts = currentScores
+                .map(s => s.inningResults[inning])
+                .filter(r => r && strictOuts.includes(r)).length;
+
+            // Check if this new input makes it 3 outs
+            // Note: We should check if we are overwriting an existing out? 
+            // If we overwrite "Strikeout" with "Strikeout", count doesn't change.
+            // But usually we just add. For simplicity, we assume adding or updating non-out to out.
+            const isOverwriteOut = (() => {
+                const s = currentScores.find(s => s.playerId === playerId);
+                const oldRes = s?.inningResults[inning];
+                return oldRes && strictOuts.includes(oldRes);
+            })();
+
+            if (!isOverwriteOut && currentOuts + 1 >= 3) {
+                setTimeout(() => {
+                    if (window.confirm('3アウトです。チェンジしますか？\n(OK: 攻守交替/次へ, Cancel: そのまま)')) {
+                        handleInningChange();
+                    }
+                }, 300); // 300ms delay to allow UI to update first (e.g. show the Out in cell)
+            }
+        }
+        // -----------------------------------------------------------------------
+
         setGame(prev => {
             // ... (existing update logic wrapper is complex, let's just insert checking logic in the setState callback or after)
             // The previous logic was modifying `scores` which is local scope in the callback. 
@@ -100,27 +132,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             // Let's copy the logic or trust that we can check *after* setGame via a ref or specific effect?
 
             // Actually, we can check based on "Out" input.
-            const strictOuts = ['振', '投ゴ', '捕ゴ', '一ゴ', '二ゴ', '三ゴ', '遊ゴ',
-                '投飛', '捕飛', '一飛', '二飛', '三飛', '遊飛',
-                '左飛', '中飛', '右飛', '犠打', '犠飛']; // added sacrifice to be safe? No, sacrifice isn't an out for "Out Count"? 
-            // Wait. Sacrifice Bunt/Fly IS an out for the inning count. Yes.
-
-            if (strictOuts.includes(result)) {
-                // Check how many outs we HAD + 1.
-                const currentOuts = scores.map(s => s.inningResults[inning])
-                    .filter(r => r && strictOuts.includes(r)).length;
-                // But wait, we are about to add one. 
-                // If we accept the input, outs will be currentOuts + 1. (Assuming we are not overwriting an existing out).
-
-                if (currentOuts + 1 >= 3) {
-                    // Trigger alert slightly after render
-                    setTimeout(() => {
-                        if (window.confirm('3アウトです。チェンジしますか？\n(OK: 攻守交替/次へ, Cancel: そのまま)')) {
-                            handleInningChange();
-                        }
-                    }, 200);
-                }
-            }
+            // (Alert Logic moved outside)
 
             // Continue with state update...
             let entryIndex = scores.findIndex(s => s.playerId === playerId);

@@ -43,13 +43,20 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
     // Helper component defined outside to prevent re-mounting
     const UmpireSelect = ({ label, value, allTeams, onChange }: { label: string, value: string, allTeams: Team[], onChange: (val: string) => void }) => {
         // Find initial team based on player name if possible, or default to ""
-        const [selectedTeamId, setSelectedTeamId] = useState("");
+        const initialTeamId = allTeams.find(t => t.players.some(p => p.name === value))?.id || "";
+        const [selectedTeamId, setSelectedTeamId] = useState(initialTeamId || "");
 
         useEffect(() => {
-            const foundTeam = allTeams.find(t => t.players.some(p => p.name === value));
-            if (foundTeam) setSelectedTeamId(foundTeam.id);
-            else if (value === '審判員') setSelectedTeamId('other');
-            else setSelectedTeamId(""); // If no match, reset
+            // Only sync if value is present (editing existing) or if we need to find the team.
+            // If value becomes empty (e.g. cleared externally), we might not want to reset Team selection immediately if user is interacting.
+            // But here value is controlled by parent.
+            if (value) {
+                const foundTeam = allTeams.find(t => t.players.some(p => p.name === value));
+                if (foundTeam) setSelectedTeamId(foundTeam.id);
+                else if (value === '審判員') setSelectedTeamId('other');
+            }
+            // If value is empty, do NOT reset selectedTeamId automatically, 
+            // because user might have just selected a team and value became "" via onChange("").
         }, [value, allTeams]);
 
         const filteredPlayers = selectedTeamId
