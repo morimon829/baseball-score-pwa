@@ -187,33 +187,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         });
         setModalOpen(false);
 
-        // Check for 3 Outs after update (Need to calculate based on new state, or just check current+1 if this was an out?)
-        // Since setGame is async/batched, we can't see new state yet.
-        // We can predict.
-        if (isOutInput) { // result passed from InputModal isOutInput logic relies on button type
-            // Actually InputModal passes isOutInput based on 'Out' category buttons.
-            // We need to count existing outs + 1.
-            const currentOutsCount = (activeTeam === 'visitor' ? game.scores.visitor : game.scores.home)
-                .map(s => s.inningResults[selectedCell.inning])
-                .filter(r => r && isOut(r)).length;
-
-            if (currentOutsCount + 1 >= 3) {
-                setTimeout(() => {
-                    if (confirm('3アウトです。チェンジしますか？\n(OK: 次の攻撃へ移動, Cancel: そのまま)')) {
-                        handleInningChange();
-                    }
-                }, 100);
-            }
-        }
-    };
-
-    const handleInningChange = () => {
-        if (activeTeam === 'visitor') {
-            setActiveTeam('home');
-        } else {
-            setActiveTeam('visitor');
-            setGame(prev => ({ ...prev, currentInning: prev.currentInning + 1 }));
-        }
+        // removed 3-out auto-change alert as per request
     };
 
     const handleRunnerAdvance = (playerId: string, base: 1 | 2 | 3 | 4, isSteal: boolean = false) => {
@@ -392,35 +366,45 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         <div className="bg-white min-h-screen flex flex-col" id="score-sheet-container">
             {/* Header */}
             <div className="bg-blue-900 text-white p-3 flex justify-between items-center sticky top-0 z-50 shadow-md" data-html2canvas-ignore>
-                <div className="flex items-center">
+                <div className="flex items-center w-full">
                     <button onClick={onBack} className="p-2 mr-2 hover:bg-blue-800 rounded">
                         <ArrowLeft />
                     </button>
-                    <div className="flex flex-col">
-                        <div className="text-sm md:text-base font-bold flex items-center gap-2">
-                            {game.teams.visitor.name} vs {game.teams.home.name}
+
+                    <button
+                        onClick={() => setGameInfoModalOpen(true)}
+                        className="flex-1 flex flex-col items-start hover:bg-blue-800 rounded p-1 -ml-1 text-left"
+                    >
+                        <div className="text-xs opacity-80 flex items-center gap-2">
+                            <span>
+                                {game.date ? (() => {
+                                    const d = new Date(game.date);
+                                    // Format YYYY年MM月DD日
+                                    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                                })() : '日付未定'}
+                            </span>
+                            {game.location && <span>@ {game.location}</span>}
                         </div>
-                        <button
-                            onClick={() => setGameInfoModalOpen(true)}
-                            className="text-xs flex items-center hover:bg-blue-800 rounded px-1 -ml-1"
-                        >
-                            <Clock size={12} className="mr-1" />
-                            {game.date} {game.startTime ? `${game.startTime} ~` : ''} {game.endTime}
-                        </button>
+                        <div className="text-lg md:text-xl font-bold flex items-center gap-3">
+                            <span>{game.teams.visitor.name} vs {game.teams.home.name}</span>
+                            <span className="text-sm font-normal opacity-90 flex items-center">
+                                <Clock size={14} className="mr-1" />
+                                {game.startTime || '--:--'} ~ {game.endTime || '--:--'}
+                            </span>
+                        </div>
+                    </button>
+                </div>
+
+                {/* Out Count (Just Display) */}
+                <div className="flex items-center space-x-4 shrink-0 bg-black/20 rounded px-2 py-1 ml-2">
+                    {/* Removed "X回表/裏" display as per request */}
+                    <div className="flex space-x-1">
+                        <span className={clsx("w-4 h-4 rounded-full border border-white", currentOuts >= 1 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
+                        <span className={clsx("w-4 h-4 rounded-full border border-white", currentOuts >= 2 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
                     </div>
                 </div>
 
-                {/* Out Count & Inning Info */}
-                <div className="flex items-center space-x-4">
-                    <div className="flex items-center bg-black/20 rounded px-2 py-1">
-                        <span className="font-bold text-xl mr-2">{game.currentInning}回{activeTeam === 'visitor' ? '表' : '裏'}</span>
-                        <div className="flex space-x-1">
-                            <span className={clsx("w-3 h-3 rounded-full border border-white", currentOuts >= 1 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
-                            <span className={clsx("w-3 h-3 rounded-full border border-white", currentOuts >= 2 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
-                        </div>
-                        <span className="text-xs ml-1 font-bold">OUT</span>
-                    </div>
-
+                <div className="ml-4">
                     <button
                         onClick={() => generatePDF(game)}
                         className="bg-green-600 px-3 py-1 rounded text-sm hover:bg-green-500 flex items-center"
@@ -661,7 +645,6 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             {gameInfoModalOpen && (
                 <GameInfoModal
                     game={game}
-                    teams={game.teams}
                     onSave={(updates) => setGame(prev => ({ ...prev, ...updates }))}
                     onClose={() => setGameInfoModalOpen(false)}
                 />

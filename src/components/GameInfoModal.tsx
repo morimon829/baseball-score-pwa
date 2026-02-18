@@ -1,32 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Game, Team } from '../types';
 import { X, Clock, MapPin, User } from 'lucide-react';
+import { loadTeams } from '../utils/storage';
 
 interface Props {
     game: Game;
-    teams: { visitor: Team; home: Team };
     onSave: (updates: Partial<Game>) => void;
     onClose: () => void;
 }
 
-export const GameInfoModal: React.FC<Props> = ({ game, teams, onSave, onClose }) => {
+export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
     const [date, setDate] = useState(game.date || '');
     const [startTime, setStartTime] = useState(game.startTime || '');
     const [endTime, setEndTime] = useState(game.endTime || '');
-    const [location, setLocation] = useState(game.location || '');
+    const [location, setLocation] = useState(game.location || '松戸第六中学校グラウンド');
     const [umpires, setUmpires] = useState(game.umpires || { main: '', base1: '', base2: '', base3: '' });
+
+    const [allTeams, setAllTeams] = useState<Team[]>([]);
+
+    useEffect(() => {
+        setAllTeams(loadTeams());
+    }, []);
 
     // Helper to get current time in HH:mm format
     const getCurrentTime = () => {
         const now = new Date();
         return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     };
-
-    // Helper to get all players from both teams for selection
-    const allPlayers = [
-        ...teams.visitor.players.map(p => ({ ...p, teamName: teams.visitor.name })),
-        ...teams.home.players.map(p => ({ ...p, teamName: teams.home.name }))
-    ];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,6 +39,29 @@ export const GameInfoModal: React.FC<Props> = ({ game, teams, onSave, onClose })
         });
         onClose();
     };
+
+    const UmpireSelect = ({ label, value, onChange }: { label: string, value: string, onChange: (val: string) => void }) => (
+        <div>
+            <label className="block text-sm text-gray-500 mb-1">{label}</label>
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full p-2 border rounded-lg"
+            >
+                <option value="">選択なし</option>
+                {allTeams.map(team => (
+                    <optgroup key={team.id} label={team.name}>
+                        {team.players.map(p => (
+                            <option key={`${team.id}-${p.id}`} value={p.name}>
+                                {p.name}
+                            </option>
+                        ))}
+                    </optgroup>
+                ))}
+                <option value="審判員">審判員</option>
+            </select>
+        </div>
+    );
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -129,71 +152,26 @@ export const GameInfoModal: React.FC<Props> = ({ game, teams, onSave, onClose })
                             <User className="mr-2" size={18} /> 審判
                         </h3>
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm text-gray-500 mb-1">球審 (Main)</label>
-                                <select
-                                    value={umpires.main}
-                                    onChange={(e) => setUmpires({ ...umpires, main: e.target.value })}
-                                    className="w-full p-2 border rounded-lg"
-                                >
-                                    <option value="">選択なし</option>
-                                    <optgroup label="登録選手">
-                                        {allPlayers.map(p => (
-                                            <option key={`${p.teamName}-${p.id}`} value={p.name}>
-                                                {p.name} ({p.teamName})
-                                            </option>
-                                        ))}
-                                    </optgroup>
-                                    <optgroup label="その他">
-                                        <option value="審判員">審判員</option>
-                                    </optgroup>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-500 mb-1">一塁塁審</label>
-                                <select
-                                    value={umpires.base1}
-                                    onChange={(e) => setUmpires({ ...umpires, base1: e.target.value })}
-                                    className="w-full p-2 border rounded-lg"
-                                >
-                                    <option value="">選択なし</option>
-                                    {allPlayers.map(p => (
-                                        <option key={`${p.teamName}-${p.id}`} value={p.name}>
-                                            {p.name} ({p.teamName})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-500 mb-1">二塁塁審</label>
-                                <select
-                                    value={umpires.base2}
-                                    onChange={(e) => setUmpires({ ...umpires, base2: e.target.value })}
-                                    className="w-full p-2 border rounded-lg"
-                                >
-                                    <option value="">選択なし</option>
-                                    {allPlayers.map(p => (
-                                        <option key={`${p.teamName}-${p.id}`} value={p.name}>
-                                            {p.name} ({p.teamName})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-500 mb-1">三塁塁審</label>
-                                <select
-                                    value={umpires.base3}
-                                    onChange={(e) => setUmpires({ ...umpires, base3: e.target.value })}
-                                    className="w-full p-2 border rounded-lg"
-                                >
-                                    <option value="">選択なし</option>
-                                    {allPlayers.map(p => (
-                                        <option key={`${p.teamName}-${p.id}`} value={p.name}>
-                                            {p.name} ({p.teamName})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <UmpireSelect
+                                label="球審 (Main)"
+                                value={umpires.main}
+                                onChange={(val) => setUmpires({ ...umpires, main: val })}
+                            />
+                            <UmpireSelect
+                                label="一塁塁審"
+                                value={umpires.base1}
+                                onChange={(val) => setUmpires({ ...umpires, base1: val })}
+                            />
+                            <UmpireSelect
+                                label="二塁塁審"
+                                value={umpires.base2}
+                                onChange={(val) => setUmpires({ ...umpires, base2: val })}
+                            />
+                            <UmpireSelect
+                                label="三塁塁審"
+                                value={umpires.base3}
+                                onChange={(val) => setUmpires({ ...umpires, base3: val })}
+                            />
                         </div>
                     </div>
 
