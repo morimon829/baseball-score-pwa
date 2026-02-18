@@ -424,8 +424,8 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 <div className="flex items-center space-x-4 shrink-0 bg-black/20 rounded px-2 py-1 ml-2">
                     {/* Removed "X回表/裏" display as per request */}
                     <div className="flex space-x-1">
-                        <span className={clsx("w-4 h-4 rounded-full border border-white", currentOuts >= 1 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
-                        <span className={clsx("w-4 h-4 rounded-full border border-white", currentOuts >= 2 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
+                        <span className={clsx("w-4 h-4 rounded-full border border-white", (currentOuts % 3) >= 1 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
+                        <span className={clsx("w-4 h-4 rounded-full border border-white", (currentOuts % 3) >= 2 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
                     </div>
                 </div>
 

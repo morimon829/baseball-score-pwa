@@ -9,6 +9,65 @@ interface Props {
     onClose: () => void;
 }
 
+// Helper component defined outside to prevent re-mounting
+const UmpireSelect = ({ label, value, allTeams, onChange }: { label: string, value: string, allTeams: Team[], onChange: (val: string) => void }) => {
+    // Find initial team based on player name if possible, or default to ""
+    const initialTeamId = allTeams.find(t => t.players.some(p => p.name === value))?.id || "";
+    const [selectedTeamId, setSelectedTeamId] = useState(initialTeamId || "");
+
+    useEffect(() => {
+        if (value) {
+            const foundTeam = allTeams.find(t => t.players.some(p => p.name === value));
+            if (foundTeam) setSelectedTeamId(foundTeam.id);
+            else if (value === '審判員') setSelectedTeamId('other');
+        }
+    }, [value, allTeams]);
+
+    const filteredPlayers = selectedTeamId
+        ? allTeams.find(t => t.id === selectedTeamId)?.players || []
+        : [];
+
+    return (
+        <div>
+            <label className="block text-sm text-gray-500 mb-1">{label}</label>
+            <div className="space-y-2">
+                <select
+                    value={selectedTeamId}
+                    onChange={(e) => {
+                        setSelectedTeamId(e.target.value);
+                        onChange(""); // Reset player when team changes
+                    }}
+                    className="w-full p-2 border rounded-lg text-sm bg-gray-50"
+                >
+                    <option value="">チームを選択...</option>
+                    {allTeams.map(team => (
+                        <option key={team.id} value={team.id}>{team.name}</option>
+                    ))}
+                    <option value="other">その他</option>
+                </select>
+
+                <select
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="w-full p-2 border rounded-lg"
+                    disabled={!selectedTeamId}
+                >
+                    <option value="">
+                        {selectedTeamId === 'other' ? '審判員を選択' : '選手を選択'}
+                    </option>
+                    {selectedTeamId === 'other' ? (
+                        <option value="審判員">審判員</option>
+                    ) : (
+                        filteredPlayers.map(p => (
+                            <option key={p.id} value={p.name}>{p.name}</option>
+                        ))
+                    )}
+                </select>
+            </div>
+        </div>
+    );
+};
+
 export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
     const [date, setDate] = useState(game.date || '');
     const [startTime, setStartTime] = useState(game.startTime || '');
@@ -38,70 +97,6 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
             umpires
         });
         onClose();
-    };
-
-    // Helper component defined outside to prevent re-mounting
-    const UmpireSelect = ({ label, value, allTeams, onChange }: { label: string, value: string, allTeams: Team[], onChange: (val: string) => void }) => {
-        // Find initial team based on player name if possible, or default to ""
-        const initialTeamId = allTeams.find(t => t.players.some(p => p.name === value))?.id || "";
-        const [selectedTeamId, setSelectedTeamId] = useState(initialTeamId || "");
-
-        useEffect(() => {
-            // Only sync if value is present (editing existing) or if we need to find the team.
-            // If value becomes empty (e.g. cleared externally), we might not want to reset Team selection immediately if user is interacting.
-            // But here value is controlled by parent.
-            if (value) {
-                const foundTeam = allTeams.find(t => t.players.some(p => p.name === value));
-                if (foundTeam) setSelectedTeamId(foundTeam.id);
-                else if (value === '審判員') setSelectedTeamId('other');
-            }
-            // If value is empty, do NOT reset selectedTeamId automatically, 
-            // because user might have just selected a team and value became "" via onChange("").
-        }, [value, allTeams]);
-
-        const filteredPlayers = selectedTeamId
-            ? allTeams.find(t => t.id === selectedTeamId)?.players || []
-            : [];
-
-        return (
-            <div>
-                <label className="block text-sm text-gray-500 mb-1">{label}</label>
-                <div className="space-y-2">
-                    <select
-                        value={selectedTeamId}
-                        onChange={(e) => {
-                            setSelectedTeamId(e.target.value);
-                            onChange(""); // Reset player when team changes
-                        }}
-                        className="w-full p-2 border rounded-lg text-sm bg-gray-50"
-                    >
-                        <option value="">チームを選択...</option>
-                        {allTeams.map(team => (
-                            <option key={team.id} value={team.id}>{team.name}</option>
-                        ))}
-                        <option value="other">その他</option>
-                    </select>
-
-                    <select
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        className="w-full p-2 border rounded-lg"
-                        disabled={!selectedTeamId}
-                    >
-                        <option value="">
-                            {selectedTeamId === 'other' ? '審判員を選択' : '選手を選択'}
-                        </option>
-                        {selectedTeamId === 'other' ? (
-                            <option value="審判員">審判員</option>
-                        ) : (
-                            filteredPlayers.map(p => (
-                                <option key={p.id} value={p.name}>{p.name}</option>
-                            ))
-                        )}
-                    </select>
-                </div>
-            </div>
-        );
     };
 
     return (
