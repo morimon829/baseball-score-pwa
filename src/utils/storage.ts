@@ -27,3 +27,15 @@ export const loadGames = (): Game[] => {
     const data = localStorage.getItem(GAMES_KEY);
     return data ? JSON.parse(data) : [];
 };
+
+export const deleteGame = (gameId: string) => {
+    const games = loadGames();
+    const newGames = games.filter(g => g.id !== gameId);
+    localStorage.setItem(GAMES_KEY, JSON.stringify(newGames));
+};
+
+export const deleteGames = (gameIds: string[]) => {
+    const games = loadGames();
+    const newGames = games.filter(g => !gameIds.includes(g.id));
+    localStorage.setItem(GAMES_KEY, JSON.stringify(newGames));
+};
