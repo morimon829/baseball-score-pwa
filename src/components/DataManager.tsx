@@ -32,7 +32,8 @@ export const DataManager: React.FC<Props> = ({ onBack }) => {
 
         teams.forEach(team => {
             team.players.forEach(player => {
-                csvContent += `${team.name},${player.number || ''},${player.name}\n`;
+                // Team, Number, Name, PlayerID
+                csvContent += `${team.name},${player.number || ''},${player.name},${player.id}\n`;
             });
         });
 
@@ -77,7 +78,13 @@ export const DataManager: React.FC<Props> = ({ onBack }) => {
                 let importedCount = 0;
 
                 lines.forEach(line => {
-                    const [teamName, number, playerName] = line.split(',').map(s => s.trim());
+                    // Format: Team, Number, Name, PlayerID(optional)
+                    const parts = line.split(',').map(s => s.trim());
+                    const teamName = parts[0];
+                    const number = parts[1];
+                    const playerName = parts[2];
+                    const playerId = parts[3]; // Optional
+
                     if (!teamName || !playerName) return;
 
                     let team = teams.find(t => t.name === teamName);
@@ -86,10 +93,59 @@ export const DataManager: React.FC<Props> = ({ onBack }) => {
                         teams.push(team);
                     }
 
-                    // Check duplicate player
-                    if (!team.players.some(p => p.name === playerName && p.number === number)) {
+                    // Check for existing player
+                    let existingPlayer = null;
+                    if (playerId) {
+                        // 1. Try to find by ID first (Transfer/Rename case)
+                        // Search in ALL teams to support transfer via CSV? 
+                        // Actually, CSV structure implies "This player belongs to This Team". 
+                        // If we find them in *another* team, should we move them?
+                        // User request: "playerIdもエクスポート、インポート対象にする" implies full portability.
+                        // If I find ID in another team, I should probably move them (Transfer).
+                        // BUT, simplistic implementation first: Search in current team or just check ID uniqueness?
+
+                        // Let's search in the *target* team first.
+                        existingPlayer = team.players.find(p => p.id === playerId);
+
+                        // If not in target team, check if they exist elsewhere?
+                        // If we support "Transfer by CSV", we need to remove from old team.
+                        // This is complex for a simple CSV import.
+                        // Let's assume for now CSV Import is mostly for "Initial Setup" or "Restore".
+                        // Use case: Export -> Edit Name -> Import.
+                        // Use case: Export -> Change Team Name -> Import (Move).
+
+                        if (!existingPlayer) {
+                            // Check if this ID exists in ANY other team
+                            for (const t of teams) {
+                                const p = t.players.find(pl => pl.id === playerId);
+                                if (p) {
+                                    // Found in another team!
+                                    // Move them? Or duplicate? 
+                                    // If we respect ID, we should MOVE them.
+                                    // Remove from old team
+                                    t.players = t.players.filter(pl => pl.id !== playerId);
+                                    // Add to new team (will be done below)
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        // Fallback: Find by Name + Number
+                        existingPlayer = team.players.find(p => p.name === playerName && p.number === number);
+                    }
+
+                    if (existingPlayer) {
+                        // Update existing
+                        existingPlayer.name = playerName;
+                        existingPlayer.number = number || '';
+                        // If it was a move, it's effectively added to 'team' if referenced by object, but we need to ensure it's in the list.
+                        if (!team.players.includes(existingPlayer)) {
+                            team.players.push(existingPlayer);
+                        }
+                    } else {
+                        // Create new
                         team.players.push({
-                            id: crypto.randomUUID(),
+                            id: playerId || crypto.randomUUID(),
                             name: playerName,
                             number: number || ''
                         });
@@ -97,11 +153,9 @@ export const DataManager: React.FC<Props> = ({ onBack }) => {
                     }
                 });
 
-                if (importedCount > 0) {
+                if (importedCount >= 0) { // Always save if we processed lines, even if just updates
                     saveTeams(teams);
-                    setMessage({ type: 'success', text: `${importedCount}件の選手データをインポートしました` });
-                } else {
-                    setMessage({ type: 'error', text: 'インポートできるデータがありませんでした' });
+                    setMessage({ type: 'success', text: 'CSVデータのインポート(更新・追加)が完了しました' });
                 }
             } else {
                 setMessage({ type: 'error', text: '非対応のファイル形式です (.json, .csv)' });
@@ -160,8 +214,8 @@ export const DataManager: React.FC<Props> = ({ onBack }) => {
                         <FileText className="mr-2 text-green-600" /> 選手一括登録
                     </h2>
                     <p className="text-sm text-gray-500">
-                        CSVファイルから選手を一括登録します。<br />
-                        形式: <code>チーム名, 背番号, 氏名</code>
+                        CSVファイルから選手を一括登録・更新します。<br />
+                        形式: <code>チーム名, 背番号, 氏名, [ID]</code>
                     </p>
                     <div className="grid grid-cols-2 gap-4">
                         <button

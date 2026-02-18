@@ -1,7 +1,7 @@
 export type InningResult =
     | ''
     | '安' | '二' | '三' | '本'  // Hits
-    | '四' | '死' | '振'          // Walks/Strikeouts
+    | '四' | '死' | '振' | '逃振' // Walks/Strikeouts
     | '投ゴ' | '捕ゴ' | '一ゴ' | '二ゴ' | '三ゴ' | '遊ゴ' // Groundouts
     | '投飛' | '捕飛' | '一飛' | '二飛' | '三飛' | '遊飛' // Flyouts
     | '左飛' | '中飛' | '右飛' // Outfield Flyouts
@@ -86,3 +86,47 @@ export interface PitcherEntry {
     er: number; // Earned Runs
     result: 'win' | 'lose' | 'save' | '';
 }
+
+export interface PlayerAggregatedStats {
+    playerId: string;
+    name: string;
+    teamId: string;
+    gamesPlayed: number;
+    plateAppearances: number;
+    atBats: number;
+    hits: number;
+    doubles: number;
+    triples: number;
+    homeRuns: number;
+    runs: number;
+    rbi: number;
+    walks: number; // 四球 + 死球
+    strikeouts: number;
+    stolenBases: number;
+    sacrificeBunts: number; // 犠打
+    sacrificeFlies: number; // 犠飛
+    errors: number;
+
+    // Calculated
+    average: number; // 打率
+    onBasePercentage: number; // 出塁率
+    sluggingPercentage: number; // 長打率
+    ops: number;
+}
+
+export interface PitcherAggregatedStats {
+    playerId: string;
+    name: string;
+    teamId: string;
+    gamesPitched: number;
+    wins: number;
+    losses: number;
+    saves: number;
+    inningsPitched: number; // 投球回（アウト数で管理するか、分数で管理するか。ここでは表示用文字列ではなく計算用にトータルのアウト数などで持つのが良いが、入力が文字列なのでパースが必要）
+    earnedRuns: number;
+
+    // Calculated
+    era: number; // 防御率
+    winningPercentage: number; // 勝率
+}
+

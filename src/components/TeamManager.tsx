@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Team, Player } from '../types';
 import { loadTeams, saveTeams } from '../utils/storage';
-import { Plus, Trash2, UserPlus, ArrowLeft, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, UserPlus, ArrowLeft, Pencil, Check, X, ArrowRightLeft } from 'lucide-react';
 import { JerseyNumber } from './JerseyNumber';
 
 interface Props {
@@ -16,6 +16,15 @@ export const TeamManager: React.FC<Props> = ({ onBack }) => {
     const [newTeamName, setNewTeamName] = useState('');
     const [newPlayerName, setNewPlayerName] = useState('');
     const [newPlayerNumber, setNewPlayerNumber] = useState('');
+
+    // Transfer State
+    const [transferringPlayer, setTransferringPlayer] = useState<{ teamId: string, player: Player } | null>(null);
+    const [transferTargetTeamId, setTransferTargetTeamId] = useState<string>('');
+
+    // Edit State
+    const [editingPlayer, setEditingPlayer] = useState<{ teamId: string, player: Player } | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editNumber, setEditNumber] = useState('');
 
     useEffect(() => {
         setTeams(loadTeams());
@@ -90,6 +99,49 @@ export const TeamManager: React.FC<Props> = ({ onBack }) => {
             return team;
         });
         handleSaveTeams(updatedTeams);
+    };
+
+    const handleTransfer = () => {
+        if (!transferringPlayer || !transferTargetTeamId) return;
+
+        const updatedTeams = teams.map(team => {
+            if (team.id === transferringPlayer.teamId) {
+                // Remove from source
+                return { ...team, players: team.players.filter(p => p.id !== transferringPlayer.player.id) };
+            }
+            if (team.id === transferTargetTeamId) {
+                // Add to target
+                return { ...team, players: [...team.players, transferringPlayer.player] };
+            }
+            return team;
+        });
+
+        handleSaveTeams(updatedTeams);
+        setTransferringPlayer(null);
+        setTransferTargetTeamId('');
+    };
+
+    const handleUpdatePlayer = () => {
+        if (!editingPlayer || !editName.trim()) return;
+
+        const updatedTeams = teams.map(team => {
+            if (team.id === editingPlayer.teamId) {
+                return {
+                    ...team,
+                    players: team.players.map(p =>
+                        p.id === editingPlayer.player.id
+                            ? { ...p, name: editName, number: editNumber }
+                            : p
+                    )
+                };
+            }
+            return team;
+        });
+
+        handleSaveTeams(updatedTeams);
+        setEditingPlayer(null);
+        setEditName('');
+        setEditNumber('');
     };
 
     return (
@@ -215,18 +267,131 @@ export const TeamManager: React.FC<Props> = ({ onBack }) => {
                                                 <JerseyNumber number={player.number || '-'} size={36} color="bg-blue-900" />
                                                 <span className="text-lg">{player.name}</span>
                                             </div>
-                                            <button
-                                                onClick={() => deletePlayer(team.id, player.id)}
-                                                className="text-red-500 hover:bg-red-50 p-2 rounded"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingPlayer({ teamId: team.id, player });
+                                                        setEditName(player.name);
+                                                        setEditNumber(player.number || '');
+                                                    }}
+                                                    className="text-gray-500 hover:bg-gray-100 p-2 rounded"
+                                                    title="編集"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setTransferringPlayer({ teamId: team.id, player })}
+                                                    className="text-blue-500 hover:bg-blue-50 p-2 rounded"
+                                                    title="他チームへ移籍"
+                                                >
+                                                    <ArrowRightLeft size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => deletePlayer(team.id, player.id)}
+                                                    className="text-red-500 hover:bg-red-50 p-2 rounded"
+                                                    title="削除"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         );
                     })()}
+                </div>
+            )}
+
+            {/* Edit Player Modal */}
+            {editingPlayer && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-sm space-y-4">
+                        <h3 className="text-lg font-bold flex items-center">
+                            <Pencil className="mr-2 text-gray-600" />
+                            選手情報の編集
+                        </h3>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">氏名</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2 border rounded text-lg"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    placeholder="選手名"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">背番号</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2 border rounded text-lg"
+                                    value={editNumber}
+                                    onChange={(e) => setEditNumber(e.target.value)}
+                                    placeholder="背番号"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 mt-4">
+                            <button
+                                onClick={() => setEditingPlayer(null)}
+                                className="flex-1 py-2 bg-gray-200 rounded font-bold hover:bg-gray-300"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                onClick={handleUpdatePlayer}
+                                className="flex-1 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700"
+                            >
+                                保存
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Transfer Modal */}
+            {transferringPlayer && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-sm space-y-4">
+                        <h3 className="text-lg font-bold flex items-center">
+                            <ArrowRightLeft className="mr-2 text-blue-600" />
+                            選手移籍
+                        </h3>
+                        <p className="text-gray-700">
+                            <strong>{transferringPlayer.player.name}</strong> 選手を移動させるチームを選択してください。
+                        </p>
+
+                        <select
+                            className="w-full p-2 border rounded text-lg"
+                            value={transferTargetTeamId}
+                            onChange={(e) => setTransferTargetTeamId(e.target.value)}
+                        >
+                            <option value="">移動先チームを選択</option>
+                            {teams.filter(t => t.id !== transferringPlayer.teamId).map(team => (
+                                <option key={team.id} value={team.id}>{team.name}</option>
+                            ))}
+                        </select>
+
+                        <div className="flex gap-2 mt-4">
+                            <button
+                                onClick={() => setTransferringPlayer(null)}
+                                className="flex-1 py-2 bg-gray-200 rounded font-bold hover:bg-gray-300"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                onClick={handleTransfer}
+                                disabled={!transferTargetTeamId}
+                                className={`flex-1 py-2 rounded font-bold text-white ${!transferTargetTeamId ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'}`}
+                            >
+                                移籍を実行
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

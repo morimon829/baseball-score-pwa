@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { loadTeams } from '../utils/storage';
 import type { Team, Game } from '../types';
-import { Users, PlayCircle, Calendar, Database } from 'lucide-react';
+import { Users, PlayCircle, Calendar, Database, BarChart2 } from 'lucide-react';
 
 interface Props {
     onNavigateTeams: () => void;
     onNavigateHistory?: () => void;
     onNavigateData?: () => void;
+    onNavigateStats?: () => void;
     onStartGame: (game: Game) => void;
 }
 
-export const Home: React.FC<Props> = ({ onNavigateTeams, onNavigateHistory, onNavigateData, onStartGame }) => {
+export const Home: React.FC<Props> = ({ onNavigateTeams, onNavigateHistory, onNavigateData, onNavigateStats, onStartGame }) => {
     const [teams, setTeams] = useState<Team[]>([]);
     const [visitorId, setVisitorId] = useState('');
     const [homeId, setHomeId] = useState('');
@@ -104,6 +105,13 @@ export const Home: React.FC<Props> = ({ onNavigateTeams, onNavigateHistory, onNa
                 className="w-full bg-white p-4 rounded-xl shadow border border-gray-200 flex items-center justify-center font-bold text-gray-700 hover:bg-gray-50 text-lg"
             >
                 <Database className="mr-2" /> データ管理
+            </button>
+
+            <button
+                onClick={() => onNavigateStats?.()}
+                className="w-full bg-white p-4 rounded-xl shadow border border-gray-200 flex items-center justify-center font-bold text-gray-700 hover:bg-gray-50 text-lg"
+            >
+                <BarChart2 className="mr-2" /> 成績管理
             </button>
 
             <div className="text-center text-gray-400 text-sm mt-8">
