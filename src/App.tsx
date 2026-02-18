@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { TeamManager } from './components/TeamManager';
 import { ScoreSheet } from './components/ScoreSheet';
 import { Home } from './components/Home';
+import { GameList } from './components/GameList';
 import type { Game } from './types';
 
-type View = 'home' | 'teams' | 'game';
+type View = 'home' | 'teams' | 'game' | 'history';
 
 function App() {
   const [view, setView] = useState<View>('home');
@@ -28,12 +29,20 @@ function App() {
       {view === 'home' && (
         <Home
           onNavigateTeams={() => setView('teams')}
+          onNavigateHistory={() => setView('history')}
           onStartGame={handleStartGame}
         />
       )}
 
       {view === 'teams' && (
         <TeamManager onBack={() => setView('home')} />
+      )}
+
+      {view === 'history' && (
+        <GameList
+          onSelectGame={handleStartGame}
+          onBack={() => setView('home')}
+        />
       )}
 
       {view === 'game' && currentGame && (
