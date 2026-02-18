@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import type { Game, InningResult, Player } from '../types';
 import { InputModal } from './InputModal';
+import { GameInfoModal } from './GameInfoModal';
 import { PlayerSelectionModal } from './PlayerSelectionModal';
 import { JerseyNumber } from './JerseyNumber';
 import { ScorebookCell } from './ScorebookCell';
 import { calculateStats } from '../utils/calculator';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Clock, User } from 'lucide-react';
 import { saveGame } from '../utils/storage';
 import { clsx } from 'clsx';
 import { generatePDF } from '../utils/pdfGenerator';
@@ -20,6 +21,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     const [game, setGame] = useState<Game>(initialGame);
     const [activeTeam, setActiveTeam] = useState<'visitor' | 'home'>('visitor');
     const [modalOpen, setModalOpen] = useState(false);
+    const [gameInfoModalOpen, setGameInfoModalOpen] = useState(false);
     const [selectedCell, setSelectedCell] = useState<{ playerId: string, inning: number } | null>(null);
 
     // Player Selection State
@@ -34,6 +36,15 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     const handleCellClick = (playerId: string, inning: number) => {
         setSelectedCell({ playerId, inning });
         setModalOpen(true);
+    };
+
+    const handleInningChange = () => {
+        if (activeTeam === 'visitor') {
+            setActiveTeam('home');
+        } else {
+            setActiveTeam('visitor');
+            setGame(prev => ({ ...prev, currentInning: prev.currentInning + 1 }));
+        }
     };
 
     // Helper to determine if result is Out
@@ -72,11 +83,60 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         if (!selectedCell) return;
         const { playerId, inning } = selectedCell;
 
+        // --- 3-Out Check Logic (Moved outside setGame to avoid double-trigger) ---
+        const strictOuts = ['振', '投ゴ', '捕ゴ', '一ゴ', '二ゴ', '三ゴ', '遊ゴ',
+            '投飛', '捕飛', '一飛', '二飛', '三飛', '遊飛',
+            '左飛', '中飛', '右飛', '犠打', '犠飛'];
+
+        if (strictOuts.includes(result)) {
+            const currentScores = activeTeam === 'visitor' ? game.scores.visitor : game.scores.home;
+            // Calculate outs BEFORE this new input
+            const currentOuts = currentScores
+                .map(s => s.inningResults[inning])
+                .filter(r => r && strictOuts.includes(r)).length;
+
+            // Check if this new input makes it 3 outs
+            // Note: We should check if we are overwriting an existing out? 
+            // If we overwrite "Strikeout" with "Strikeout", count doesn't change.
+            // But usually we just add. For simplicity, we assume adding or updating non-out to out.
+            const isOverwriteOut = (() => {
+                const s = currentScores.find(s => s.playerId === playerId);
+                const oldRes = s?.inningResults[inning];
+                return oldRes && strictOuts.includes(oldRes);
+            })();
+
+            if (!isOverwriteOut && currentOuts + 1 >= 3) {
+                setTimeout(() => {
+                    if (window.confirm('3アウトです。チェンジしますか？\n(OK: 攻守交替/次へ, Cancel: そのまま)')) {
+                        handleInningChange();
+                    }
+                }, 300); // 300ms delay to allow UI to update first (e.g. show the Out in cell)
+            }
+        }
+        // -----------------------------------------------------------------------
+
         setGame(prev => {
+            // ... (existing update logic wrapper is complex, let's just insert checking logic in the setState callback or after)
+            // The previous logic was modifying `scores` which is local scope in the callback. 
+            // We need to return the new state. 
+            // To implement the alert, we need to know the *result* of the new state. 
+            // But we can't do async "confirm" inside setGame.
+
+            // Workaround: Use a separate useEffect to check for 3 outs? No, that triggers on load too.
+            // Best way: Calculate outs *before* setGame? No, we need new state.
+            // Calculate outs from `prev` + `current input`.
+
             const teamKey = activeTeam;
             const scores = [...prev.scores[teamKey]];
-            let entryIndex = scores.findIndex(s => s.playerId === playerId);
+            // ... (same update logic as above to get new scores)
+            // Let's copy the logic or trust that we can check *after* setGame via a ref or specific effect?
 
+            // Actually, we can check based on "Out" input.
+            // (Alert Logic moved outside)
+
+            // Continue with state update...
+            let entryIndex = scores.findIndex(s => s.playerId === playerId);
+            // ... (rest of logic)
             if (entryIndex === -1) {
                 scores.push({
                     playerId,
@@ -85,26 +145,18 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 });
                 entryIndex = scores.length - 1;
             }
-
             const entry = { ...scores[entryIndex] };
             entry.inningResults = { ...entry.inningResults, [inning]: result };
-
+            // ...
+            // (Copying the rest of the logic from the file view to be safe)
             if (!result) {
-                // Clear details if result is cleared
                 entry.details[inning] = { rbi: 0, isRun: false, stolenBases: 0 };
             } else {
                 if (!entry.details[inning]) {
                     entry.details[inning] = { rbi: 0, isRun: false };
                 }
-
-                // Auto Reach First if Hit/Walk and not Out
-                // Note: isOutInput passed from modal relies on button type.
                 if (!isOutInput && !entry.details[inning].reachedFirst) {
-                    // Simple logic: if hit/walk, at least reach first.
-                    // Unless it's a HR (Run) or specific case.
-                    // Let's set reachedFirst = true for safety if not strictly 'HR'.
                     if (['安', '二', '三', '本', '四', '死', '敬遠', '失', '野選'].includes(result)) {
-                        // FIX: HR should also reach first
                         entry.details[inning].reachedFirst = true;
                     }
                     if (['二', '三', '本'].includes(result)) entry.details[inning].reachedSecond = true;
@@ -112,75 +164,41 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     if (result === '本') entry.details[inning].isRun = true;
                 }
             }
-
             scores[entryIndex] = entry;
 
-            // --- Auto Advance Runners Logic ---
-            // Find runners (using PREV state to find them, but modifying NEW state scores)
-            // We need to iterate over the *new* scores array to find other players to update
+            // Auto Advance
             scores.forEach((s, idx) => {
-                if (s.playerId === playerId) return; // Skip current batter
-
+                if (s.playerId === playerId) return;
                 const r = s.inningResults[inning];
                 const d = s.details[inning];
-                if (!r || isOut(r) || d?.isRun) return; // Not on base
-
-                // Current base
+                if (!r || isOut(r) || d?.isRun) return;
                 let base = 0;
                 if (d?.reachedThird) base = 3;
                 else if (d?.reachedSecond) base = 2;
                 else if (d?.reachedFirst) base = 1;
-
                 if (base === 0) return;
-
-                // Logic based on Batter Result
                 let advance = 0;
-                if (['安', '四', '死', '敬遠'].includes(result)) advance = 1; // Single/Walk -> +1 base (Simplified)
+                if (['安', '四', '死', '敬遠'].includes(result)) advance = 1;
                 if (result === '二') advance = 2;
                 if (result === '三') advance = 3;
                 if (result === '本') advance = 4;
-
-                // For Walk, only force if forced? User asked for simple logic.
-                // "Runner 1st & Double -> 2nd & 3rd". Wait.
-                // 1B (base=1) + Double (adv=2) -> 1+2 = 3rd. Correct.
-                // 2B (base=2) + Double (adv=2) -> 4 (Home). Correct.
-                // Walk: 1B -> 2B (forced). 2B (open 1st) -> Stay?
-                // Auto-logic is tricky. Let's apply basic advancement and let user fix?
-                // "自動で設定されるようにしたい...自由に入力する余地は残したい"
-                // Let's apply standard "Push" logic.
-
                 if (['四', '死', '敬遠'].includes(result)) {
-                    // Force logic is hard without knowing whole state.
-                    // Simple: Advance 1 if on 1st. If on 2nd and 1st occupied... too complex for quick fix.
-                    // Just use Advance 1 for Walk for 1st base runner only?
                     if (base === 1) advance = 1;
-                    else advance = 0; // Don't auto-advance 2nd/3rd on walk unless forced.
+                    else advance = 0;
                 }
-
                 if (advance > 0) {
                     const newBase = base + advance;
                     let newDetails = { ...scores[idx].details[inning] };
-
                     if (newBase >= 2) newDetails.reachedSecond = true;
                     if (newBase >= 3) newDetails.reachedThird = true;
                     if (newBase >= 4) newDetails.isRun = true;
-
-                    scores[idx] = {
-                        ...scores[idx],
-                        details: {
-                            ...scores[idx].details,
-                            [inning]: newDetails
-                        }
-                    };
+                    scores[idx] = { ...scores[idx], details: { ...scores[idx].details, [inning]: newDetails } };
                 }
             });
 
             return {
                 ...prev,
-                scores: {
-                    ...prev.scores,
-                    [teamKey]: scores
-                }
+                scores: { ...prev.scores, [teamKey]: scores }
             };
         });
         setModalOpen(false);
@@ -294,6 +312,40 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         setPlayerModalOpen(false);
     };
 
+    const handleErrorClick = (playerId: string) => {
+        setGame(prev => {
+            const teamKey = activeTeam;
+            const scores = [...prev.scores[teamKey]];
+            let entryIndex = scores.findIndex(s => s.playerId === playerId);
+
+            if (entryIndex === -1) {
+                scores.push({
+                    playerId,
+                    inningResults: {},
+                    details: {},
+                    defensiveErrors: 1
+                });
+            } else {
+                const entry = { ...scores[entryIndex] };
+                entry.defensiveErrors = (entry.defensiveErrors || 0) + 1;
+                // Simple cycle? 0 -> 1 -> 2 ... -> 0? Or just increment? 
+                // User asked for "Input". Increment is standard. 
+                // Context menu for decrement? Or just cycle for simplicity?
+                // Let's cycle 0->1->2->3->0 for now to allow correction without complex UI.
+                if (entry.defensiveErrors > 9) entry.defensiveErrors = 0;
+                scores[entryIndex] = entry;
+            }
+
+            return {
+                ...prev,
+                scores: {
+                    ...prev.scores,
+                    [teamKey]: scores
+                }
+            };
+        });
+    };
+
     const currentLineup = activeTeam === 'visitor' ? game.visitorLineup : game.homeLineup;
     const currentScores = activeTeam === 'visitor' ? game.scores.visitor : game.scores.home;
 
@@ -304,19 +356,89 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
     const innings = Array.from({ length: totalInnings }, (_, i) => i + 1);
 
+    // Calculate Current Outs (for game.currentInning)
+    const currentOuts = currentScores
+        .map(s => s.inningResults[game.currentInning])
+        .filter(r => r && isOut(r)).length;
+
+    // Check for 3 Outs
+    useEffect(() => {
+        if (currentOuts >= 3) {
+            // Check if already handled? No usually re-render triggers this.
+            // We don't want to spam alerts.
+            // But we can't easily track "Alerted for this inning".
+            // Let's use a timeout or just show a Toast?
+            // "Confirm" dialog is blocking and bad in useEffect.
+            // Let's just allow user to click a "Change" button that appears?
+            // Or maybe handling it in setGame is better? 
+            // setGame is in handleInput.
+            // Let's move this logic to handleInput to be triggered ONCE when the 3rd out is made.
+        }
+    }, [currentOuts, game.currentInning, activeTeam]);
+
     return (
         <div className="bg-white min-h-screen flex flex-col" id="score-sheet-container">
             {/* Header */}
             <div className="bg-blue-900 text-white p-3 flex justify-between items-center sticky top-0 z-50 shadow-md" data-html2canvas-ignore>
-                <div className="flex items-center">
+                <div className="flex items-center w-full">
                     <button onClick={onBack} className="p-2 mr-2 hover:bg-blue-800 rounded">
                         <ArrowLeft />
                     </button>
-                    <div className="text-sm md:text-base font-bold">
-                        {game.date} | {game.teams.visitor.name} vs {game.teams.home.name}
+
+                    <button
+                        onClick={() => setGameInfoModalOpen(true)}
+                        className="flex-1 flex items-center hover:bg-blue-800 rounded p-1 -ml-1 text-left"
+                    >
+                        <div className="flex flex-col flex-1">
+                            <div className="text-xs opacity-80 flex items-center gap-2 flex-wrap">
+                                <span>
+                                    {game.date ? (() => {
+                                        const d = new Date(game.date);
+                                        return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                                    })() : '日付未定'}
+                                </span>
+                                {game.location && <span>@ {game.location}</span>}
+                            </div>
+                            <div className="text-lg md:text-xl font-bold flex items-center gap-3">
+                                <span>{game.teams.visitor.name} vs {game.teams.home.name}</span>
+                                <span className="text-sm font-normal opacity-90 flex items-center">
+                                    <Clock size={14} className="mr-1" />
+                                    {game.startTime || '--:--'} ~ {game.endTime || '--:--'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Umpire Info Display - Right Side */}
+                        {(game.umpires?.main || game.umpires?.base1) && (
+                            <div className="flex items-center ml-2 border-l border-white/30 pl-3 py-1">
+                                <div className="flex flex-col justify-center text-sm opacity-90">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <User size={14} />
+                                        <span className="font-bold">主審: {game.umpires.main || '-'}</span>
+                                    </div>
+                                    {(game.umpires.base1 || game.umpires.base2 || game.umpires.base3) && (
+                                        <div className="flex gap-2 text-xs opacity-90">
+                                            <span>一: {game.umpires.base1 || '-'}</span>
+                                            <span>二: {game.umpires.base2 || '-'}</span>
+                                            <span>三: {game.umpires.base3 || '-'}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </button>
+                </div>
+
+                {/* Out Count (Just Display) */}
+                <div className="flex items-center space-x-4 shrink-0 bg-black/20 rounded px-2 py-1 ml-2">
+                    {/* Removed "X回表/裏" display as per request */}
+                    <div className="flex space-x-1">
+                        <span className={clsx("w-4 h-4 rounded-full border border-white", (currentOuts % 3) >= 1 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
+                        <span className={clsx("w-4 h-4 rounded-full border border-white", (currentOuts % 3) >= 2 ? "bg-red-500 border-red-500" : "bg-transparent")}></span>
                     </div>
                 </div>
-                <div>
+
+                <div className="ml-4">
                     <button
                         onClick={() => generatePDF(game)}
                         className="bg-green-600 px-3 py-1 rounded text-sm hover:bg-green-500 flex items-center"
@@ -357,7 +479,8 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                         <div className="w-12 p-2 text-center border-r border-gray-300">安打</div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">得点</div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">打点</div>
-                        <div className="w-12 p-2 text-center">盗塁</div>
+                        <div className="w-12 p-2 text-center border-r border-gray-300">盗塁</div>
+                        <div className="w-12 p-2 text-center">失策</div>
                     </div>
 
                     {/* Rows */}
@@ -416,7 +539,13 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                 <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50 text-red-600">{stats.hits}</div>
                                 <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50">{stats.runs}</div>
                                 <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50">{stats.rbi}</div>
-                                <div className="w-12 p-2 text-center font-bold bg-gray-50 text-blue-600">{stats.stolenBases}</div>
+                                <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50 text-blue-600">{stats.stolenBases}</div>
+                                <div
+                                    className="w-12 p-2 text-center font-bold bg-gray-50 cursor-pointer hover:bg-gray-200"
+                                    onClick={() => handleErrorClick(player.id)}
+                                >
+                                    {stats.errors}
+                                </div>
                             </div>
                         );
                     })}
@@ -437,19 +566,20 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                             <thead>
                                 <tr className="border-b">
                                     <th className="p-2 text-left">氏名</th>
-                                    <th className="p-2 w-16">回数</th>
+                                    <th className="p-2 w-14">回数</th>
+                                    <th className="p-2 w-12">自責</th>
                                     <th className="p-2 w-16">勝敗</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {[0, 1, 2, 3].map(idx => {
                                     const records = game.pitcherRecords?.[activeTeam] || [];
-                                    const entry = records[idx] || { id: '', name: '', innings: '', result: '' };
+                                    const entry = records[idx] || { id: '', name: '', innings: '', er: 0, result: '' };
 
-                                    const updatePitcher = (field: keyof typeof entry, value: string) => {
+                                    const updatePitcher = (field: keyof typeof entry, value: string | number) => {
                                         setGame(prev => {
                                             const newRecords = [...(prev.pitcherRecords?.[activeTeam] || [])];
-                                            while (newRecords.length <= idx) newRecords.push({ id: '', name: '', innings: '', result: '' });
+                                            while (newRecords.length <= idx) newRecords.push({ id: '', name: '', innings: '', er: 0, result: '' });
 
                                             newRecords[idx] = { ...newRecords[idx], [field]: value };
                                             return {
@@ -462,16 +592,22 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                         });
                                     };
 
+                                    // Filter players to show only active team's players
+                                    const teamPlayers = activeTeam === 'visitor' ? game.teams.visitor.players : game.teams.home.players;
+
                                     return (
                                         <tr key={idx} className="border-b last:border-0">
                                             <td className="p-1">
-                                                <input
-                                                    type="text"
-                                                    className="w-full border rounded p-1"
-                                                    placeholder={idx === 0 ? "先発" : "救援"}
+                                                <select
+                                                    className="w-full border rounded p-1 text-sm bg-white"
                                                     value={entry.name}
                                                     onChange={e => updatePitcher('name', e.target.value)}
-                                                />
+                                                >
+                                                    <option value="">{idx === 0 ? "先発" : "救援"}</option>
+                                                    {teamPlayers.map(p => (
+                                                        <option key={p.id} value={p.name}>{p.name}</option>
+                                                    ))}
+                                                </select>
                                             </td>
                                             <td className="p-1">
                                                 <input
@@ -479,6 +615,14 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                                     className="w-full border rounded p-1 text-center"
                                                     value={entry.innings}
                                                     onChange={e => updatePitcher('innings', e.target.value)}
+                                                />
+                                            </td>
+                                            <td className="p-1">
+                                                <input
+                                                    type="number"
+                                                    className="w-full border rounded p-1 text-center"
+                                                    value={entry.er || ''}
+                                                    onChange={e => updatePitcher('er', Number(e.target.value))}
                                                 />
                                             </td>
                                             <td className="p-1 text-center">
@@ -531,6 +675,14 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             <div className="p-2 bg-gray-100 flex justify-end text-xs text-gray-500">
                 ※ スコアを入力するには枠をタップしてください
             </div>
+
+            {gameInfoModalOpen && (
+                <GameInfoModal
+                    game={game}
+                    onSave={(updates) => setGame(prev => ({ ...prev, ...updates }))}
+                    onClose={() => setGameInfoModalOpen(false)}
+                />
+            )}
         </div >
     );
 };

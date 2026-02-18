@@ -26,7 +26,8 @@ export const calculateStats = (entry: ScoreEntry | undefined): PlayerStats => {
             '左飛', '中飛', '右飛', '失', '野選'].includes(result)) {
             stats.atBats++;
             if (result === '振') stats.strikeouts++;
-            if (result === '失') stats.errors++; // Note: strictly defensive error, but here counting as batting result? Usually 'E' on batter records is reaching on error.
+            if (result === '振') stats.strikeouts++;
+            // if (result === '失') stats.errors++; // Removed: '失' is Reach on Error, not Defensive Error.
         }
         // Walks / Sacrifices (Do not count as At Bat)
         else if (['四', '死', '敬遠'].includes(result)) {
@@ -43,6 +44,8 @@ export const calculateStats = (entry: ScoreEntry | undefined): PlayerStats => {
         stats.rbi += detail.rbi || 0;
         stats.stolenBases += detail.stolenBases || 0;
     });
+
+    stats.errors = entry.defensiveErrors || 0;
 
     return stats;
 };
