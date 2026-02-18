@@ -168,13 +168,13 @@ export const DataManager: React.FC<Props> = ({ onBack }) => {
                             onClick={handleRestoreClick}
                             className="flex items-center justify-center p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 border border-green-200 font-bold"
                         >
-                            <Upload className="mr-2" /> CSVインポート
+                            <Download className="mr-2" /> CSVインポート
                         </button>
                         <button
                             onClick={handleExportCSV}
                             className="flex items-center justify-center p-4 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 border border-teal-200 font-bold"
                         >
-                            <Download className="mr-2" /> CSVエクスポート
+                            <Upload className="mr-2" /> CSVエクスポート
                         </button>
                     </div>
                 </div>
