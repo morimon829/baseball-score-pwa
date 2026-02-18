@@ -40,28 +40,63 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
         onClose();
     };
 
-    const UmpireSelect = ({ label, value, onChange }: { label: string, value: string, onChange: (val: string) => void }) => (
-        <div>
-            <label className="block text-sm text-gray-500 mb-1">{label}</label>
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="w-full p-2 border rounded-lg"
-            >
-                <option value="">選択なし</option>
-                {allTeams.map(team => (
-                    <optgroup key={team.id} label={team.name}>
-                        {team.players.map(p => (
-                            <option key={`${team.id}-${p.id}`} value={p.name}>
-                                {p.name}
-                            </option>
+    const UmpireSelect = ({ label, value, onChange }: { label: string, value: string, onChange: (val: string) => void }) => {
+        // Find initial team based on player name if possible, or default to ""
+        const initialTeamId = allTeams.find(t => t.players.some(p => p.name === value))?.id || "";
+        const [selectedTeamId, setSelectedTeamId] = useState(initialTeamId);
+
+        // If value changes externally (e.g. reset), update team selection? 
+        // For now, valid to keep as is.
+        // But if we open modal with existing value, we want team selected.
+        useEffect(() => {
+            const foundTeam = allTeams.find(t => t.players.some(p => p.name === value));
+            if (foundTeam) setSelectedTeamId(foundTeam.id);
+        }, [value]);
+
+        const filteredPlayers = selectedTeamId
+            ? allTeams.find(t => t.id === selectedTeamId)?.players || []
+            : [];
+
+        return (
+            <div>
+                <label className="block text-sm text-gray-500 mb-1">{label}</label>
+                <div className="space-y-2">
+                    <select
+                        value={selectedTeamId}
+                        onChange={(e) => {
+                            setSelectedTeamId(e.target.value);
+                            onChange(""); // Reset player when team changes
+                        }}
+                        className="w-full p-2 border rounded-lg text-sm bg-gray-50"
+                    >
+                        <option value="">チームを選択...</option>
+                        {allTeams.map(team => (
+                            <option key={team.id} value={team.id}>{team.name}</option>
                         ))}
-                    </optgroup>
-                ))}
-                <option value="審判員">審判員</option>
-            </select>
-        </div>
-    );
+                        <option value="other">その他</option>
+                    </select>
+
+                    <select
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        className="w-full p-2 border rounded-lg"
+                        disabled={!selectedTeamId}
+                    >
+                        <option value="">
+                            {selectedTeamId === 'other' ? '審判員を選択' : '選手を選択'}
+                        </option>
+                        {selectedTeamId === 'other' ? (
+                            <option value="審判員">審判員</option>
+                        ) : (
+                            filteredPlayers.map(p => (
+                                <option key={p.id} value={p.name}>{p.name}</option>
+                            ))
+                        )}
+                    </select>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

@@ -6,7 +6,7 @@ import { PlayerSelectionModal } from './PlayerSelectionModal';
 import { JerseyNumber } from './JerseyNumber';
 import { ScorebookCell } from './ScorebookCell';
 import { calculateStats } from '../utils/calculator';
-import { ArrowLeft, Download, Clock } from 'lucide-react';
+import { ArrowLeft, Download, Clock, User } from 'lucide-react';
 import { saveGame } from '../utils/storage';
 import { clsx } from 'clsx';
 import { generatePDF } from '../utils/pdfGenerator';
@@ -375,15 +375,26 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                         onClick={() => setGameInfoModalOpen(true)}
                         className="flex-1 flex flex-col items-start hover:bg-blue-800 rounded p-1 -ml-1 text-left"
                     >
-                        <div className="text-xs opacity-80 flex items-center gap-2">
+                        <div className="text-xs opacity-80 flex items-center gap-2 flex-wrap">
                             <span>
                                 {game.date ? (() => {
                                     const d = new Date(game.date);
-                                    // Format YYYY年MM月DD日
                                     return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
                                 })() : '日付未定'}
                             </span>
                             {game.location && <span>@ {game.location}</span>}
+                            {/* Umpire Info Display */}
+                            {(game.umpires?.main || game.umpires?.base1) && (
+                                <span className="flex items-center gap-1 border-l border-white/30 pl-2 ml-1">
+                                    <User size={10} />
+                                    <span>PL:{game.umpires.main || '-'}</span>
+                                    {(game.umpires.base1 || game.umpires.base2 || game.umpires.base3) && (
+                                        <span className="text-[10px] opacity-80">
+                                            (塁: {game.umpires.base1}/{game.umpires.base2}/{game.umpires.base3})
+                                        </span>
+                                    )}
+                                </span>
+                            )}
                         </div>
                         <div className="text-lg md:text-xl font-bold flex items-center gap-3">
                             <span>{game.teams.visitor.name} vs {game.teams.home.name}</span>
