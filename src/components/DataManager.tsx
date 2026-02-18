@@ -26,6 +26,28 @@ export const DataManager: React.FC<Props> = ({ onBack }) => {
         setMessage({ type: 'success', text: 'バックアップファイルをダウンロードしました' });
     };
 
+    const handleExportCSV = () => {
+        const teams = loadTeams();
+        let csvContent = "";
+
+        teams.forEach(team => {
+            team.players.forEach(player => {
+                csvContent += `${team.name},${player.number || ''},${player.name}\n`;
+            });
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `players_export_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setMessage({ type: 'success', text: '選手データをCSVとしてエクスポートしました' });
+    };
+
     const handleRestoreClick = () => {
         fileInputRef.current?.click();
     };
@@ -141,12 +163,20 @@ export const DataManager: React.FC<Props> = ({ onBack }) => {
                         CSVファイルから選手を一括登録します。<br />
                         形式: <code>チーム名, 背番号, 氏名</code>
                     </p>
-                    <button
-                        onClick={handleRestoreClick}
-                        className="w-full flex items-center justify-center p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 border border-green-200 font-bold"
-                    >
-                        <Upload className="mr-2" /> CSVをインポート
-                    </button>
+                    <div className="grid grid-cols-2 gap-4">
+                        <button
+                            onClick={handleRestoreClick}
+                            className="flex items-center justify-center p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 border border-green-200 font-bold"
+                        >
+                            <Upload className="mr-2" /> CSVインポート
+                        </button>
+                        <button
+                            onClick={handleExportCSV}
+                            className="flex items-center justify-center p-4 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 border border-teal-200 font-bold"
+                        >
+                            <Download className="mr-2" /> CSVエクスポート
+                        </button>
+                    </div>
                 </div>
 
                 {message && (
