@@ -54,10 +54,14 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
 
         return (
             <div className="flex-1 flex flex-col border-2 border-black mx-1 bg-white">
-                {/* Team Name Header */}
-                <div className="flex border-b-2 border-black h-8 shrink-0">
-                    <div className="w-16 border-r border-black flex items-center justify-center font-bold text-xs">{title}</div>
-                    <div className="flex-1 pl-2 flex items-center font-bold">{teamData.name}</div>
+                {/* Team Name Header (Aligned with Order and Name) */}
+                <div className="flex shrink-0 -mt-[26px] mb-0.5 h-6" style={{ width: '136px' }}>
+                    <div className="w-full relative">
+                        <div className="text-[10px] leading-none mb-0.5 ml-0.5">{title}</div>
+                        <div className="border-2 border-black flex items-center justify-center h-6 px-1 font-bold text-xs truncate bg-white">
+                            {teamData.name}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Table Header */}
@@ -209,7 +213,7 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
             </div>
 
             {/* Bottom Section: Main Batting Tables */}
-            <div className="flex h-[525px] w-full mt-1">
+            <div className="flex h-[525px] w-full mt-6">
                 {renderBattingTable('visitor', '先攻チーム名')}
                 {renderBattingTable('home', '後攻チーム名')}
             </div>
