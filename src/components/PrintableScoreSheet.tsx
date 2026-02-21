@@ -133,11 +133,11 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
             <div className="flex mb-2 h-32">
                 {/* Left Info */}
                 <div className="w-56 flex flex-col justify-between text-sm pr-4">
-                    <div className="flex items-end border-b border-black pb-1">
-                        <span className="w-14">実施日</span>
-                        <span className="flex-1 text-center leading-none">{year || ''}</span><span>年</span>
-                        <span className="w-8 text-center leading-none">{month || ''}</span><span>月</span>
-                        <span className="w-8 text-center leading-none">{day || ''}</span><span>日</span>
+                    <div className="flex items-end border-b border-black pb-1.5">
+                        <span className="w-14 pb-1">実施日</span>
+                        <span className="flex-1 text-center pb-1">{year || ''}</span><span className="pb-1">年</span>
+                        <span className="w-8 text-center pb-1">{month || ''}</span><span className="pb-1">月</span>
+                        <span className="w-8 text-center pb-1">{day || ''}</span><span className="pb-1">日</span>
                     </div>
                     <div className="mt-2 flex items-end">
                         <span className="w-16 pb-1">主審名</span>
