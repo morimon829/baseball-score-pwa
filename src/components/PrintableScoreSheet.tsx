@@ -55,10 +55,10 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
         return (
             <div className="flex-1 flex flex-col border-2 border-black mx-1 bg-white">
                 {/* Team Name Header (Aligned with Order and Name) */}
-                <div className="flex shrink-0 -mt-[26px] mb-0.5 h-6" style={{ width: '136px' }}>
+                <div className="flex shrink-0 -mt-[31px] mb-1 h-6 relative" style={{ width: '136px', left: '-2px' }}>
                     <div className="w-full relative">
                         <div className="text-[10px] leading-none mb-0.5 ml-0.5">{title}</div>
-                        <div className="border-2 border-black flex items-center justify-center h-6 px-1 font-bold text-xs truncate bg-white">
+                        <div className="border-2 border-black flex items-center justify-center h-[26px] px-1 font-bold text-xs truncate bg-white relative">
                             {teamData.name}
                         </div>
                     </div>
