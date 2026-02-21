@@ -53,75 +53,77 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
         const rowCount = 14;
 
         return (
-            <div className="flex-1 flex flex-col border-2 border-black mx-1 bg-white">
-                {/* Team Name Header (Aligned with Order and Name) */}
-                <div className="flex shrink-0 -mt-[31px] mb-1 h-6 relative" style={{ width: '136px', left: '-2px' }}>
-                    <div className="w-full relative">
-                        <div className="text-[10px] leading-none mb-0.5 ml-0.5">{title}</div>
-                        <div className="border-2 border-black flex items-center justify-center h-[26px] px-1 font-bold text-xs truncate bg-white relative">
+            <div className="flex-1 flex flex-col mx-1">
+                {/* Team Name Header (Outside the main table border) */}
+                <div className="flex shrink-0" style={{ width: '134px' }}>
+                    <div className="w-full flex flex-col">
+                        <div className="text-[10px] leading-none mb-0.5 ml-0.5 tracking-tighter">{title}</div>
+                        <div className="border-t-2 border-l-2 border-r-2 border-black flex items-center justify-center h-6 px-1 font-bold text-[11px] truncate bg-white">
                             {teamData.name}
                         </div>
                     </div>
                 </div>
 
-                {/* Table Header */}
-                <div className="flex border-b border-black h-10 shrink-0 text-[11px] text-center font-bold leading-tight">
-                    <div className="w-6 border-r border-black flex items-center justify-center">打<br />順</div>
-                    <div className="w-28 border-r border-black flex items-center justify-center">氏 名</div>
-                    <div className="w-6 border-r border-black flex items-center justify-center">背<br />番</div>
-                    {[1, 2, 3, 4, 5, 6, 7].map(i => (
-                        <div key={i} className="flex-1 border-r border-black flex items-center justify-center">{i}<br />回</div>
-                    ))}
-                    <div className="w-[26px] border-r border-black flex items-center justify-center text-[10px]">打<br />席</div>
-                    <div className="w-[26px] border-r border-black flex items-center justify-center text-[10px]">打<br />数</div>
-                    <div className="w-[26px] border-r border-black flex items-center justify-center text-[10px]">安<br />打</div>
-                    <div className="w-[26px] border-r border-black flex items-center justify-center text-[10px]">得<br />点</div>
-                    <div className="w-[26px] flex items-center justify-center text-[10px]">盗<br />塁</div>
+                <div className="flex-1 flex flex-col border-2 border-black bg-white">
+                    {/* Table Header */}
+                    <div className="flex border-b border-black h-10 shrink-0 text-[11px] text-center font-bold leading-tight">
+                        <div className="w-6 border-r border-black flex items-center justify-center">打<br />順</div>
+                        <div className="w-28 border-r border-black flex items-center justify-center">氏 名</div>
+                        <div className="w-6 border-r border-black flex items-center justify-center">背<br />番</div>
+                        {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                            <div key={i} className="flex-1 border-r border-black flex items-center justify-center">{i}<br />回</div>
+                        ))}
+                        <div className="w-[26px] border-r border-black flex items-center justify-center text-[10px]">打<br />席</div>
+                        <div className="w-[26px] border-r border-black flex items-center justify-center text-[10px]">打<br />数</div>
+                        <div className="w-[26px] border-r border-black flex items-center justify-center text-[10px]">安<br />打</div>
+                        <div className="w-[26px] border-r border-black flex items-center justify-center text-[10px]">得<br />点</div>
+                        <div className="w-[26px] flex items-center justify-center text-[10px]">盗<br />塁</div>
+                    </div>
+
+                    {/* 14 Rows */}
+                    {Array.from({ length: rowCount }).map((_, idx) => {
+                        const player = lineup[idx];
+                        const entry = player ? scores.find(s => s.playerId === player.id) : null;
+
+                        // Basic Stats
+                        let pa = 0; let ab = 0; let h = 0; let r = 0; let sb = 0;
+                        if (entry) {
+                            const results = Object.values(entry.inningResults).filter(Boolean);
+                            pa = results.length;
+                            ab = results.filter(res => !['四', '死', '敬遠', '犠', '犠飛', 'ギ'].includes(res)).length;
+                            h = results.filter(res => ['安', '二', '三', '本'].includes(res)).length;
+                            r = Object.values(entry.details).filter(d => d.isRun).length;
+                            sb = Object.values(entry.details).reduce((sum, d) => sum + (d.stolenBases || 0), 0);
+                        }
+
+                        return (
+                            <div key={idx} className={`flex border-b border-black flex-1 ${idx === rowCount - 1 ? 'border-b-0' : ''}`}>
+                                <div className="w-6 border-r border-black flex items-center justify-center text-[11px]">{idx + 1}</div>
+                                <div className="w-28 border-r border-black flex items-center px-1 text-[11px] truncate">{player?.name || ''}</div>
+                                <div className="w-6 border-r border-black flex items-center justify-center text-[11px]">{player?.number || ''}</div>
+
+                                {[1, 2, 3, 4, 5, 6, 7].map(i => {
+                                    const keys = entry ? Object.keys(entry.inningResults).filter(k => k.startsWith(`${i}`) && (k === `${i}` || k.includes('-'))) : [];
+                                    const cellResults = keys.map(k => entry!.inningResults[k]).filter(Boolean);
+
+                                    return (
+                                        <div key={i} className="flex-1 border-r border-black flex flex-col items-center justify-center text-[10px] leading-tight overflow-hidden px-0.5 whitespace-nowrap">
+                                            {cellResults.map((rStr, rIdx) => (
+                                                <span key={rIdx}>{rStr}</span>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
+
+                                <div className="w-[26px] border-r border-black flex items-center justify-center text-[11px]">{pa > 0 ? pa : ''}</div>
+                                <div className="w-[26px] border-r border-black flex items-center justify-center text-[11px]">{ab > 0 ? ab : ''}</div>
+                                <div className="w-[26px] border-r border-black flex items-center justify-center text-[11px]">{h > 0 ? h : ''}</div>
+                                <div className="w-[26px] border-r border-black flex items-center justify-center text-[11px]">{r > 0 ? r : ''}</div>
+                                <div className="w-[26px] flex items-center justify-center text-[11px]">{sb > 0 ? sb : ''}</div>
+                            </div>
+                        );
+                    })}
                 </div>
-
-                {/* 14 Rows */}
-                {Array.from({ length: rowCount }).map((_, idx) => {
-                    const player = lineup[idx];
-                    const entry = player ? scores.find(s => s.playerId === player.id) : null;
-
-                    // Basic Stats
-                    let pa = 0; let ab = 0; let h = 0; let r = 0; let sb = 0;
-                    if (entry) {
-                        const results = Object.values(entry.inningResults).filter(Boolean);
-                        pa = results.length;
-                        ab = results.filter(res => !['四', '死', '敬遠', '犠', '犠飛', 'ギ'].includes(res)).length;
-                        h = results.filter(res => ['安', '二', '三', '本'].includes(res)).length;
-                        r = Object.values(entry.details).filter(d => d.isRun).length;
-                        sb = Object.values(entry.details).reduce((sum, d) => sum + (d.stolenBases || 0), 0);
-                    }
-
-                    return (
-                        <div key={idx} className={`flex border-b border-black flex-1 ${idx === rowCount - 1 ? 'border-b-0' : ''}`}>
-                            <div className="w-6 border-r border-black flex items-center justify-center text-[11px]">{idx + 1}</div>
-                            <div className="w-28 border-r border-black flex items-center px-1 text-[11px] truncate">{player?.name || ''}</div>
-                            <div className="w-6 border-r border-black flex items-center justify-center text-[11px]">{player?.number || ''}</div>
-
-                            {[1, 2, 3, 4, 5, 6, 7].map(i => {
-                                const keys = entry ? Object.keys(entry.inningResults).filter(k => k.startsWith(`${i}`) && (k === `${i}` || k.includes('-'))) : [];
-                                const cellResults = keys.map(k => entry!.inningResults[k]).filter(Boolean);
-
-                                return (
-                                    <div key={i} className="flex-1 border-r border-black flex flex-col items-center justify-center text-[10px] leading-tight overflow-hidden px-0.5 whitespace-nowrap">
-                                        {cellResults.map((rStr, rIdx) => (
-                                            <span key={rIdx}>{rStr}</span>
-                                        ))}
-                                    </div>
-                                );
-                            })}
-
-                            <div className="w-[26px] border-r border-black flex items-center justify-center text-[11px]">{pa > 0 ? pa : ''}</div>
-                            <div className="w-[26px] border-r border-black flex items-center justify-center text-[11px]">{ab > 0 ? ab : ''}</div>
-                            <div className="w-[26px] border-r border-black flex items-center justify-center text-[11px]">{h > 0 ? h : ''}</div>
-                            <div className="w-[26px] border-r border-black flex items-center justify-center text-[11px]">{r > 0 ? r : ''}</div>
-                            <div className="w-[26px] flex items-center justify-center text-[11px]">{sb > 0 ? sb : ''}</div>
-                        </div>
-                    );
-                })}
             </div>
         );
     };
