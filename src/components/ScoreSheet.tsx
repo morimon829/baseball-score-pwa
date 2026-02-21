@@ -511,14 +511,24 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                     {index + 1}
                                 </div>
                                 <div className="w-12 border-r border-gray-300 bg-white sticky left-10 z-30 flex items-center justify-center p-1">
-                                    <input
-                                        type="text"
-                                        className="w-full h-full text-center text-sm font-bold border rounded outline-none focus:ring-1 focus:ring-blue-500"
+                                    <select
+                                        className="w-full h-full text-center text-sm font-bold border rounded outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                                         value={player.position || ''}
                                         onChange={(e) => handlePositionChange(index, e.target.value)}
-                                        placeholder="-"
-                                        maxLength={2}
-                                    />
+                                        style={{ WebkitAppearance: 'none', MozAppearance: 'none', textIndent: '1px', textOverflow: '' }} // Hack to center text in select
+                                    >
+                                        <option value="">-</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                        <option value="5">5</option>
+                                        <option value="6">6</option>
+                                        <option value="7">7</option>
+                                        <option value="8">8</option>
+                                        <option value="9">9</option>
+                                        <option value="DH">DH</option>
+                                    </select>
                                 </div>
                                 <div
                                     className="w-28 p-2 border-r border-gray-300 bg-white sticky left-[5.5rem] z-30 flex flex-col justify-center overflow-hidden cursor-pointer hover:bg-gray-50"
