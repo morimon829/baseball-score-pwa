@@ -111,8 +111,8 @@ export const InputModal: React.FC<Props> = ({
             const posNames = ['', '投', '捕', '一', '二', '三', '遊', '左', '中', '右'];
             const pName = posNames[position];
 
-            // Infielders have Grounders vs Flys. Outfielders typically only have Flys standard in this app.
-            const hasGrounder = position <= 6;
+            // All positions can have Grounders or Flys. (e.g. outfield groundout)
+            const hasGrounder = true;
 
             return (
                 <div className="grid grid-cols-2 gap-3">
@@ -132,10 +132,9 @@ export const InputModal: React.FC<Props> = ({
 
         if (category === '三振') {
             return (
-                <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => handleSelect('振', true)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">空振り三振</button>
-                    <button onClick={() => handleSelect('逃振', true)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">見逃し三振</button>
-                    <button onClick={() => setCategory(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
+                <div className="grid grid-cols-1 gap-3">
+                    <button onClick={() => handleSelect('振', true)} className="p-4 bg-white border border-gray-300 rounded font-bold text-xl hover:bg-gray-100">三振</button>
+                    <button onClick={() => setCategory(null)} className="p-3 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
                 </div>
             );
         }
@@ -167,6 +166,7 @@ export const InputModal: React.FC<Props> = ({
                     <button onClick={() => handleSelect('野選', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">野選 (FC)</button>
                     <button onClick={() => handleSelect('打妨', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">打撃妨害</button>
                     <button onClick={() => handleSelect('守妨', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">守備妨害</button>
+                    <button onClick={() => handleSelect('逃振', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">振り逃げ</button>
                     <button onClick={() => setCategory(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
                 </div>
             );
