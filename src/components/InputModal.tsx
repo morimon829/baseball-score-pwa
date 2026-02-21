@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { InningResult } from '../types';
 import { clsx } from 'clsx';
 
@@ -36,38 +36,144 @@ export const InputModal: React.FC<Props> = ({
     runners = [],
     onRunnerAdvance
 }) => {
+    const [category, setCategory] = useState<string | null>(null);
+    const [position, setPosition] = useState<number | null>(null);
+
+    // Reset state when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setCategory(null);
+            setPosition(null);
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
-    const buttons: { label: InningResult; isOut: boolean; style?: string }[] = [
-        { label: '安', isOut: false, style: 'bg-yellow-100 border-yellow-300' },
-        { label: '二', isOut: false, style: 'bg-yellow-100 border-yellow-300' },
-        { label: '三', isOut: false, style: 'bg-yellow-100 border-yellow-300' },
-        { label: '本', isOut: false, style: 'bg-orange-200 border-orange-400 font-bold' },
-        { label: '四', isOut: false, style: 'bg-blue-50 border-blue-200' },
-        { label: '死', isOut: false, style: 'bg-blue-50 border-blue-200' },
-        { label: '振', isOut: true },
-        { label: '投ゴ', isOut: true },
-        { label: '捕ゴ', isOut: true },
-        { label: '一ゴ', isOut: true },
-        { label: '二ゴ', isOut: true },
-        { label: '三ゴ', isOut: true },
-        { label: '遊ゴ', isOut: true },
-        { label: '投飛', isOut: true },
-        { label: '捕飛', isOut: true },
-        { label: '一飛', isOut: true },
-        { label: '二飛', isOut: true },
-        { label: '三飛', isOut: true },
-        { label: '遊飛', isOut: true },
-        { label: '左飛', isOut: true },
-        { label: '中飛', isOut: true },
-        { label: '右飛', isOut: true },
-        { label: '犠飛', isOut: true },
-        { label: '犠打', isOut: true },
-        { label: '打妨', isOut: false },
-        { label: '守妨', isOut: false },
-        { label: '失', isOut: false, style: 'bg-red-50 border-red-200' },
-        { label: '野選', isOut: false },
-    ];
+    const handleSelect = (res: InningResult, isOut: boolean) => {
+        onSelect(res, isOut);
+        setCategory(null);
+        setPosition(null);
+    };
+
+    const renderMenu = () => {
+        // Main Menu
+        if (!category) {
+            return (
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setCategory('安打')} className="p-3 bg-yellow-100 border border-yellow-300 rounded font-bold hover:bg-yellow-200">打撃 (安打など)</button>
+                    <button onClick={() => setCategory('凡退')} className="p-3 bg-gray-100 border border-gray-300 rounded font-bold hover:bg-gray-200">凡退 (ゴロ/飛球)</button>
+                    <button onClick={() => setCategory('三振')} className="p-3 text-red-700 bg-red-50 border border-red-200 rounded font-bold hover:bg-red-100">三振</button>
+                    <button onClick={() => setCategory('四死球')} className="p-3 bg-blue-50 border border-blue-200 rounded font-bold hover:bg-blue-100">四死球</button>
+                    <button onClick={() => setCategory('犠打飛')} className="p-3 bg-indigo-50 border border-indigo-200 rounded font-bold hover:bg-indigo-100">犠打・犠飛</button>
+                    <button onClick={() => setCategory('その他')} className="p-3 bg-gray-50 border border-gray-300 rounded font-bold hover:bg-gray-100">その他 (失策など)</button>
+                    <button onClick={() => handleSelect('', false)} className="p-3 col-span-2 mt-2 border-2 border-dashed border-gray-400 text-gray-500 rounded font-bold hover:bg-gray-100">クリア (取り消し)</button>
+                </div>
+            );
+        }
+
+        // Sub Menu: Hit
+        if (category === '安打') {
+            return (
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => handleSelect('安', false)} className="p-3 bg-yellow-100 border border-yellow-300 rounded font-bold text-lg">安打 (単打)</button>
+                    <button onClick={() => handleSelect('二', false)} className="p-3 bg-yellow-100 border border-yellow-300 rounded font-bold text-lg">二塁打</button>
+                    <button onClick={() => handleSelect('三', false)} className="p-3 bg-yellow-100 border border-yellow-300 rounded font-bold text-lg">三塁打</button>
+                    <button onClick={() => handleSelect('本', false)} className="p-3 bg-orange-200 border border-orange-400 rounded font-bold text-lg">本塁打</button>
+                    <button onClick={() => setCategory(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
+                </div>
+            );
+        }
+
+        // Sub Menu: Out -> Position
+        if (category === '凡退' && position === null) {
+            const positions = [
+                { id: 1, name: '投' }, { id: 2, name: '捕' }, { id: 3, name: '一' },
+                { id: 4, name: '二' }, { id: 5, name: '三' }, { id: 6, name: '遊' },
+                { id: 7, name: '左' }, { id: 8, name: '中' }, { id: 9, name: '右' }
+            ];
+            return (
+                <>
+                    <p className="text-center font-bold text-gray-600 mb-2">打球の飛んだポジション</p>
+                    <div className="grid grid-cols-3 gap-3">
+                        {positions.map(p => (
+                            <button key={p.id} onClick={() => setPosition(p.id)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-blue-50">
+                                {p.name}
+                            </button>
+                        ))}
+                        <button onClick={() => setCategory(null)} className="p-3 col-span-3 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
+                    </div>
+                </>
+            );
+        }
+
+        // Sub Menu: Out -> Outcome (Fly vs Grounder)
+        if (category === '凡退' && position !== null) {
+            const posNames = ['', '投', '捕', '一', '二', '三', '遊', '左', '中', '右'];
+            const pName = posNames[position];
+
+            // Infielders have Grounders vs Flys. Outfielders typically only have Flys standard in this app.
+            const hasGrounder = position <= 6;
+
+            return (
+                <div className="grid grid-cols-2 gap-3">
+                    <p className="col-span-2 text-center font-bold text-gray-600 mb-2">【 {pName} 】への打球</p>
+                    {hasGrounder && (
+                        <button onClick={() => handleSelect(`${pName}ゴ` as InningResult, true)} className="p-4 bg-white border border-gray-300 rounded font-bold text-xl hover:bg-gray-100">
+                            {pName}ゴ <span className="text-sm font-normal text-gray-500 block">(ゴロ)</span>
+                        </button>
+                    )}
+                    <button onClick={() => handleSelect(`${pName}飛` as InningResult, true)} className={clsx("p-4 bg-white border border-gray-300 rounded font-bold text-xl hover:bg-gray-100", !hasGrounder && "col-span-2")}>
+                        {pName}飛 <span className="text-sm font-normal text-gray-500 block">(フライ/ライナー)</span>
+                    </button>
+                    <button onClick={() => setPosition(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
+                </div>
+            );
+        }
+
+        if (category === '三振') {
+            return (
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => handleSelect('振', true)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">空振り三振</button>
+                    <button onClick={() => handleSelect('逃振', true)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">見逃し三振</button>
+                    <button onClick={() => setCategory(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
+                </div>
+            );
+        }
+
+        if (category === '四死球') {
+            return (
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => handleSelect('四', false)} className="p-3 bg-blue-50 border border-blue-200 rounded font-bold text-lg hover:bg-blue-100">四球 (フォアボール)</button>
+                    <button onClick={() => handleSelect('死', false)} className="p-3 bg-blue-50 border border-blue-200 rounded font-bold text-lg hover:bg-blue-100">死球 (デッドボール)</button>
+                    <button onClick={() => setCategory(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
+                </div>
+            );
+        }
+
+        if (category === '犠打飛') {
+            return (
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => handleSelect('犠打', true)} className="p-3 bg-indigo-50 border border-indigo-200 rounded font-bold text-lg hover:bg-indigo-100">犠打 (バント)</button>
+                    <button onClick={() => handleSelect('犠飛', true)} className="p-3 bg-indigo-50 border border-indigo-200 rounded font-bold text-lg hover:bg-indigo-100">犠飛 (犠牲フライ)</button>
+                    <button onClick={() => setCategory(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
+                </div>
+            );
+        }
+
+        if (category === 'その他') {
+            return (
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => handleSelect('失', false)} className="p-3 bg-red-50 border border-red-200 rounded font-bold text-lg hover:bg-red-100 text-red-700">失策 (エラー)</button>
+                    <button onClick={() => handleSelect('野選', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">野選 (FC)</button>
+                    <button onClick={() => handleSelect('打妨', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">打撃妨害</button>
+                    <button onClick={() => handleSelect('守妨', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">守備妨害</button>
+                    <button onClick={() => setCategory(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
+                </div>
+            );
+        }
+
+        return null;
+    };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
@@ -113,10 +219,10 @@ export const InputModal: React.FC<Props> = ({
                     </div>
                 </div>
 
-                <div className="p-4 grid grid-cols-4 gap-3 overflow-y-auto">
+                <div className="p-4 overflow-y-auto">
                     {/* Runners on Base Control */}
                     {runners.length > 0 && (
-                        <div className="border-t pt-2">
+                        <div className="border-t pt-2 mb-4">
                             <h4 className="font-bold text-sm text-gray-600 mb-2">塁上のランナー (タップで進塁)</h4>
                             <div className="space-y-2">
                                 {runners.map(runner => (
@@ -173,24 +279,10 @@ export const InputModal: React.FC<Props> = ({
                         </div>
                     )}
 
-                    <button
-                        onClick={() => onSelect('', false)}
-                        className="p-4 rounded-lg border bg-gray-50 hover:bg-gray-100 flex flex-col items-center justify-center col-span-4"
-                    >
-                        <span className="text-sm font-bold text-gray-400">クリア</span>
-                    </button>
-                    {buttons.map((btn) => (
-                        <button
-                            key={btn.label}
-                            onClick={() => onSelect(btn.label, btn.isOut)}
-                            className={clsx(
-                                "p-3 rounded-lg border-2 flex flex-col items-center justify-center shadow-sm transition-all active:scale-95",
-                                btn.style || "bg-white border-gray-200 hover:border-blue-300"
-                            )}
-                        >
-                            <span className="text-lg md:text-xl font-bold">{btn.label}</span>
-                        </button>
-                    ))}
+                    {/* Result Selection Area */}
+                    <div className="bg-gray-50 p-4 rounded-lg border">
+                        {renderMenu()}
+                    </div>
                 </div>
             </div>
         </div>
