@@ -606,15 +606,18 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                             </div>
                         </div>
 
-                        {/* Umpire Info Display - Right Side */}
-                        {(game.umpires?.main || game.umpires?.base1) && (
+                        {/* Umpire & Recorder Info Display - Right Side */}
+                        {(game.umpires?.main || game.umpires?.base1 || game.recorder) && (
                             <div className="flex items-center ml-2 border-l border-white/30 pl-3 py-1">
                                 <div className="flex flex-col justify-center text-sm opacity-90">
                                     <div className="flex items-center gap-2 mb-0.5">
                                         <User size={14} />
-                                        <span className="font-bold">主審: {game.umpires.main || '-'}</span>
+                                        <span className="font-bold">主審: {game.umpires?.main || '-'}</span>
+                                        {game.recorder && (
+                                            <span className="ml-2 font-bold text-xs text-blue-200">記録: {game.recorder}</span>
+                                        )}
                                     </div>
-                                    {(game.umpires.base1 || game.umpires.base2 || game.umpires.base3) && (
+                                    {(game.umpires?.base1 || game.umpires?.base2 || game.umpires?.base3) && (
                                         <div className="flex gap-2 text-xs opacity-90">
                                             <span>一: {game.umpires.base1 || '-'}</span>
                                             <span>二: {game.umpires.base2 || '-'}</span>
@@ -757,15 +760,15 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                         style={{ WebkitAppearance: 'none', MozAppearance: 'none', textIndent: '1px', textOverflow: '' }} // Hack to center text in select
                                     >
                                         <option value="">-</option>
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
-                                        <option value="4">4</option>
-                                        <option value="5">5</option>
-                                        <option value="6">6</option>
-                                        <option value="7">7</option>
-                                        <option value="8">8</option>
-                                        <option value="9">9</option>
+                                        <option value="投">投</option>
+                                        <option value="捕">捕</option>
+                                        <option value="一">一</option>
+                                        <option value="二">二</option>
+                                        <option value="三">三</option>
+                                        <option value="遊">遊</option>
+                                        <option value="左">左</option>
+                                        <option value="中">中</option>
+                                        <option value="右">右</option>
                                         <option value="DH">DH</option>
                                     </select>
                                 </div>
@@ -1040,10 +1043,15 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             {gameInfoModalOpen && (
                 <GameInfoModal
                     game={game}
-                    onSave={(updates) => setGame(prev => ({ ...prev, ...updates }))}
+                    onSave={(updates) => {
+                        setGame(prev => ({ ...prev, ...updates }));
+                        saveGame({ ...game, ...updates });
+                    }}
                     onClose={() => setGameInfoModalOpen(false)}
                 />
             )}
         </div >
     );
 };
+
+export default ScoreSheet;

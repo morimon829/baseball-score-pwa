@@ -55,6 +55,7 @@ export interface Game {
     startTime?: string;
     endTime?: string;
     location?: string;
+    recorder?: string;
     umpires?: {
         main: string;
         base1: string;

@@ -3,6 +3,7 @@ import { ArrowLeft, Filter, Calendar } from 'lucide-react';
 import { loadGames, loadTeams } from '../utils/storage';
 import { calculateBattingStats, calculatePitchingStats } from '../utils/statsCalculator';
 import type { Game, Team } from '../types';
+import { PlayerStatsDetail } from './PlayerStatsDetail';
 
 interface Props {
     onBack: () => void;
@@ -22,6 +23,7 @@ export const StatsDashboard: React.FC<Props> = ({ onBack }) => {
 
     const [games, setGames] = useState<Game[]>([]);
     const [teams, setTeams] = useState<Team[]>([]);
+    const [selectedPlayer, setSelectedPlayer] = useState<{ id: string, name: string } | null>(null);
 
     // Sorting State
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'average', direction: 'desc' });
@@ -89,17 +91,43 @@ export const StatsDashboard: React.FC<Props> = ({ onBack }) => {
         return <span className="ml-1 text-blue-600">{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>;
     };
 
+    const tooltipMap: Record<string, string> = {
+        'average': '打率 = 安打 ÷ 打数',
+        'ops': 'OPS = 出塁率 + 長打率 (打席での貢献度)',
+        'era': '防御率 = (自責点 × 7) ÷ 投球回 ※草野球の7回制想定',
+        'winningPercentage': '勝率 = 勝利数 ÷ (勝利数 + 敗北数)',
+        'plateAppearances': '打席数 (全打席)',
+        'atBats': '打数 (四死球・犠打飛等を除いた打席数)',
+        'earnedRuns': '自責点 (投手の責任による失点)',
+        'saves': 'セーブ数'
+    };
+
     // Helper for table header
-    const Th = ({ label, sortKey, minWidth }: { label: string, sortKey: string, minWidth?: string }) => (
-        <th
-            className={`p-2 cursor-pointer hover:bg-gray-200 transition select-none ${minWidth ? minWidth : ''} ${label === '氏名' ? 'text-left sticky left-0 bg-gray-100 z-10' : ''}`}
-            onClick={() => handleSort(sortKey)}
-        >
-            <div className="flex items-center justify-center">
-                {label} <SortIcon columnKey={sortKey} />
-            </div>
-        </th>
-    );
+    const Th = ({ label, sortKey, minWidth }: { label: string, sortKey: string, minWidth?: string }) => {
+        const tooltip = tooltipMap[sortKey];
+        return (
+            <th
+                className={`p-2 cursor-pointer hover:bg-gray-200 transition select-none ${minWidth ? minWidth : ''} ${label === '氏名' ? 'text-left sticky left-0 bg-gray-100 z-10' : ''}`}
+                onClick={() => handleSort(sortKey)}
+                title={tooltip}
+            >
+                <div className="flex items-center justify-center">
+                    {label}
+                    {tooltip && <span className="ml-1 text-white bg-gray-400 rounded-full w-3 h-3 flex items-center justify-center text-[10px] font-normal leading-none" title={tooltip}>?</span>}
+                    <SortIcon columnKey={sortKey} />
+                </div>
+            </th>
+        );
+    };
+
+    if (selectedPlayer) {
+        return <PlayerStatsDetail
+            playerId={selectedPlayer.id}
+            playerName={selectedPlayer.name}
+            games={games}
+            onBack={() => setSelectedPlayer(null)}
+        />;
+    }
 
     return (
         <div className="bg-gray-50 min-h-screen pb-20">
@@ -230,7 +258,14 @@ export const StatsDashboard: React.FC<Props> = ({ onBack }) => {
                         <tbody>
                             {sortedBattingStats.map((stat, i) => (
                                 <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
-                                    <td className="p-2 text-left sticky left-0 bg-white font-medium border-r">{stat.name}</td>
+                                    <td className="p-2 text-left sticky left-0 bg-white font-medium border-r">
+                                        <button
+                                            onClick={() => setSelectedPlayer({ id: stat.playerId, name: stat.name })}
+                                            className="text-blue-600 underline hover:text-blue-800 focus:outline-none"
+                                        >
+                                            {stat.name}
+                                        </button>
+                                    </td>
                                     <td className="p-2 font-bold text-red-600">{stat.average.toFixed(3)}</td>
                                     <td className="p-2">{stat.gamesPlayed}</td>
                                     <td className="p-2">{stat.plateAppearances}</td>
@@ -277,7 +312,14 @@ export const StatsDashboard: React.FC<Props> = ({ onBack }) => {
                         <tbody>
                             {sortedPitchingStats.map((stat, i) => (
                                 <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
-                                    <td className="p-2 text-left sticky left-0 bg-white font-medium border-r">{stat.name}</td>
+                                    <td className="p-2 text-left sticky left-0 bg-white font-medium border-r">
+                                        <button
+                                            onClick={() => setSelectedPlayer({ id: stat.playerId, name: stat.name })}
+                                            className="text-blue-600 underline hover:text-blue-800 focus:outline-none"
+                                        >
+                                            {stat.name}
+                                        </button>
+                                    </td>
                                     <td className="p-2 font-bold text-red-600">{stat.era.toFixed(2)}</td>
                                     <td className="p-2">{stat.gamesPitched}</td>
                                     <td className="p-2">{stat.wins}</td>

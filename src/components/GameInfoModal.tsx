@@ -73,6 +73,7 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
     const [startTime, setStartTime] = useState(game.startTime || '');
     const [endTime, setEndTime] = useState(game.endTime || '');
     const [location, setLocation] = useState(game.location || '松戸第六中学校グラウンド');
+    const [recorder, setRecorder] = useState(game.recorder || '');
     const [umpires, setUmpires] = useState(game.umpires || { main: '', base1: '', base2: '', base3: '' });
 
     const [allTeams, setAllTeams] = useState<Team[]>([]);
@@ -94,6 +95,7 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
             startTime,
             endTime,
             location,
+            recorder,
             umpires
         });
         onClose();
@@ -180,6 +182,21 @@ export const GameInfoModal: React.FC<Props> = ({ game, onSave, onClose }) => {
                             placeholder="球場名を入力"
                             className="w-full p-2 border rounded-lg"
                         />
+                    </div>
+
+                    {/* Recorder */}
+                    <div className="space-y-4">
+                        <h3 className="font-bold flex items-center text-gray-700">
+                            <User className="mr-2" size={18} /> 記録者
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4">
+                            <UmpireSelect
+                                label="スコア記録者"
+                                value={recorder}
+                                allTeams={allTeams}
+                                onChange={(val) => setRecorder(val)}
+                            />
+                        </div>
                     </div>
 
                     {/* Umpires */}
