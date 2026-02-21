@@ -576,9 +576,9 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
 
     return (
-        <div className="bg-white min-h-screen flex flex-col" id="score-sheet-container">
+        <div className="bg-white min-h-screen" id="score-sheet-container">
             {/* Header */}
-            <div className="bg-blue-900 text-white p-3 flex justify-between items-center sticky top-0 z-50 shadow-md" data-html2canvas-ignore>
+            <div className="bg-blue-900 text-white p-3 flex justify-between items-center shadow-md relative z-40" data-html2canvas-ignore>
                 <div className="flex items-center w-full">
                     <button onClick={onBack} className="p-2 mr-2 hover:bg-blue-800 rounded">
                         <ArrowLeft />
@@ -667,7 +667,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             </div>
 
             {/* Score Grid Container */}
-            <div className="flex-1 overflow-auto relative">
+            <div className="overflow-x-auto overflow-y-visible relative pb-16 pt-2">
                 <div className="min-w-max">
                     {/* Table Header */}
                     <div className="flex border-b-2 border-black bg-gray-100 font-bold text-sm sticky top-0 z-40">
