@@ -57,7 +57,7 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
                 {/* Team Name Header (Outside the main table border) */}
                 <div className="flex shrink-0 w-[138px]">
                     <div className="w-full flex flex-col">
-                        <div className="text-[10px] leading-none mb-0.5 ml-0.5 tracking-tighter">{title}</div>
+                        <div className="text-[10px] pb-1 ml-0.5 tracking-tighter">{title}</div>
                         <div className="border-2 border-black border-b-0 flex items-center justify-center h-[26px] px-1 font-bold text-[11px] truncate bg-white">
                             {teamData.name}
                         </div>
