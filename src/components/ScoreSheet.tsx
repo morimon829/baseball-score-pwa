@@ -437,6 +437,52 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         });
     };
 
+    const handleAddBatter = () => {
+        setGame(prev => {
+            const teamKey = activeTeam === 'visitor' ? 'visitorLineup' : 'homeLineup';
+            const lineup = [...prev[teamKey]];
+            lineup.push({
+                id: `${activeTeam}-${crypto.randomUUID()}`,
+                name: '',
+                number: '',
+                order: lineup.length + 1
+            });
+            return { ...prev, [teamKey]: lineup };
+        });
+    };
+
+    const handleRemoveBatter = () => {
+        setGame(prev => {
+            const teamLineupKey = activeTeam === 'visitor' ? 'visitorLineup' : 'homeLineup';
+            const teamScoresKey = activeTeam;
+            const lineup = [...prev[teamLineupKey]];
+            if (lineup.length <= 9) {
+                alert('基本ルールの9人を下回ることはできません。');
+                return prev;
+            }
+
+            const lastPlayer = lineup[lineup.length - 1];
+
+            // Check if the last player has data
+            const scores = prev.scores[teamScoresKey];
+            const entry = scores.find(s => s.playerId === lastPlayer.id);
+            let hasData = false;
+            if (entry) {
+                if (Object.values(entry.inningResults).some(v => v !== '')) hasData = true;
+                if (Object.values(entry.details).some((d: any) => Object.keys(d).length > 0)) hasData = true;
+            }
+
+            if (hasData) {
+                if (!window.confirm(`打順 ${lineup.length} 番の選手にはデータが入力されています。本当に削除しますか？`)) {
+                    return prev;
+                }
+            }
+
+            lineup.pop();
+            return { ...prev, [teamLineupKey]: lineup };
+        });
+    };
+
     const handleErrorClick = (playerId: string) => {
         setGame(prev => {
             const teamKey = activeTeam;
@@ -781,6 +827,30 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                             </div>
                         );
                     })}
+
+                    {/* Add/Remove Batter Controls */}
+                    <div className="flex border-b border-gray-300 h-12 items-center bg-gray-100">
+                        <div className="w-10 flex flex-col h-full border-r border-gray-300 sticky left-0 z-30 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            <button
+                                onClick={handleAddBatter}
+                                className="flex-1 bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 flex items-center justify-center border-b border-blue-200"
+                                title="打席を追加 (10人打ちなど)"
+                            >
+                                +
+                            </button>
+                            <button
+                                onClick={handleRemoveBatter}
+                                className={clsx("flex-1 font-bold flex items-center justify-center", currentLineup.length > 9 ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-gray-200 text-gray-400 cursor-not-allowed")}
+                                title={currentLineup.length > 9 ? "最後の打席を削除" : "9人を下回ることはできません"}
+                            >
+                                -
+                            </button>
+                        </div>
+                        <div className="px-2 w-12 sticky left-10 z-30 bg-gray-100 h-full border-r border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] flex items-center justify-center">
+                            <span className="text-[10px] text-gray-500 font-bold text-center leading-tight tracking-tighter">打順追加<br />／削除</span>
+                        </div>
+                        <div className="flex-1 h-full bg-gray-100"></div>
+                    </div>
                 </div>
             </div>
 
