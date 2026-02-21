@@ -55,10 +55,10 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
         return (
             <div className="flex-1 flex flex-col mx-1">
                 {/* Team Name Header (Outside the main table border) */}
-                <div className="flex shrink-0" style={{ width: '134px' }}>
+                <div className="flex shrink-0 w-[134px]">
                     <div className="w-full flex flex-col">
                         <div className="text-[10px] leading-none mb-0.5 ml-0.5 tracking-tighter">{title}</div>
-                        <div className="border-t-2 border-l-2 border-r-2 border-black flex items-center justify-center h-6 px-1 font-bold text-[11px] truncate bg-white">
+                        <div className="border border-black border-b-0 flex items-center justify-center h-[26px] px-1 font-bold text-[11px] truncate bg-white">
                             {teamData.name}
                         </div>
                     </div>
@@ -215,13 +215,13 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
             </div>
 
             {/* Bottom Section: Main Batting Tables */}
-            <div className="flex h-[525px] w-full mt-6">
+            <div className="flex h-[515px] w-full mt-2">
                 {renderBattingTable('visitor', '先攻チーム名')}
                 {renderBattingTable('home', '後攻チーム名')}
             </div>
 
             {/* Footer Legend */}
-            <div className="h-[55px] mt-2 flex items-start text-[11px] font-bold px-4 gap-8">
+            <div className="h-[65px] mt-2 flex items-start text-[11px] font-bold px-4 gap-8">
                 <div className="flex flex-col gap-0.5 leading-tight">
                     <span>安 → シングルヒット</span>
                     <span>二 → 二塁打</span>
