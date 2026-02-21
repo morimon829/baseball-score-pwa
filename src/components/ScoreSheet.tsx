@@ -846,8 +846,9 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                 -
                             </button>
                         </div>
-                        <div className="px-2 w-12 sticky left-10 z-30 bg-gray-100 h-full border-r border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] flex items-center justify-center">
-                            <span className="text-[10px] text-gray-500 font-bold text-center leading-tight tracking-tighter">打順追加<br />／削除</span>
+                        <div className="w-12 sticky left-10 z-30 bg-gray-100 h-full border-r border-gray-300"></div>
+                        <div className="w-28 px-2 sticky left-[5.5rem] z-30 bg-gray-100 h-full border-r border-gray-300 flex items-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            <span className="text-xs text-gray-500 font-bold">打順追加／削除</span>
                         </div>
                         <div className="flex-1 h-full bg-gray-100"></div>
                     </div>
