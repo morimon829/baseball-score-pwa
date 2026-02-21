@@ -138,12 +138,12 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
                         <span>日</span>
                     </div>
                     <div className="mt-2 flex items-end">
-                        <span className="w-16">主審名</span>
-                        <span className="flex-1 text-center border-b border-black pb-1 leading-none">{game.umpires?.main || ''}</span>
+                        <span className="w-16 pb-1">主審名</span>
+                        <span className="flex-1 text-center border-b border-black pb-1.5">{game.umpires?.main || ''}</span>
                     </div>
                     <div className="mt-2 flex items-end">
-                        <span className="w-16">記録者</span>
-                        <span className="flex-1 text-center border-b border-black pb-1 leading-none">{game.recorder || ''}</span>
+                        <span className="w-16 pb-1">記録者</span>
+                        <span className="flex-1 text-center border-b border-black pb-1.5">{game.recorder || ''}</span>
                     </div>
                 </div>
 
@@ -176,7 +176,7 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
 
                 {/* Right Pitcher Records */}
                 <div className="w-[300px] pl-4 flex flex-col">
-                    <div className="text-right text-[11px] mb-1.5 tracking-widest leading-none">投 手 記 録</div>
+                    <div className="text-right text-[11px] mb-2.5 tracking-widest leading-none">投 手 記 録</div>
                     <div className="border-2 border-black flex flex-col flex-1 bg-white">
                         <div className="flex flex-1 border-b-2 border-black text-center font-bold text-xs bg-gray-100 items-center">
                             <div className="flex-1 border-r border-black h-full flex items-center justify-center">先発</div>
