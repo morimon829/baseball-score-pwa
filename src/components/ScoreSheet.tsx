@@ -671,12 +671,15 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 <div className="min-w-max">
                     {/* Table Header */}
                     <div className="flex border-b-2 border-black bg-gray-100 font-bold text-sm sticky top-0 z-40">
-                        <div className="w-10 p-2 text-center border-r border-gray-300 sticky left-0 bg-gray-100 z-50">打順</div>
-                        <div className="w-12 p-1 text-center border-r border-gray-300 sticky left-10 bg-gray-100 z-50 text-[10px] sm:text-xs flex flex-col items-center justify-center leading-tight">
-                            <span>守備</span>
-                            <span>位置</span>
+                        {/* Grouped Sticky Left Header */}
+                        <div className="flex sticky left-0 z-50 bg-gray-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            <div className="w-10 p-2 text-center border-r border-gray-300">打順</div>
+                            <div className="w-12 p-1 text-center border-r border-gray-300 text-[10px] sm:text-xs flex flex-col items-center justify-center leading-tight">
+                                <span>守備</span>
+                                <span>位置</span>
+                            </div>
+                            <div className="w-28 p-2 text-center border-r border-gray-300">氏名</div>
                         </div>
-                        <div className="w-28 p-2 text-center border-r border-gray-300 sticky left-[5.5rem] bg-gray-100 z-50">氏名</div>
                         {columnKeys.map(key => {
                             const parts = key.split('-');
                             const inningNum = parts[0];
@@ -749,40 +752,42 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
                         return (
                             <div key={index} className="flex border-b border-gray-300 h-16 items-center">
-                                {/* Sticky Name Col */}
-                                <div className="w-10 p-2 text-center border-r border-gray-300 font-bold bg-white sticky left-0 z-30 flex items-center justify-center">
-                                    {index + 1}
-                                </div>
-                                <div className="w-12 border-r border-gray-300 bg-white sticky left-10 z-30 flex items-center justify-center p-1">
-                                    <select
-                                        className="w-full h-full text-center text-sm font-bold border rounded outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                                        value={player.position || ''}
-                                        onChange={(e) => handlePositionChange(index, e.target.value)}
-                                        style={{ WebkitAppearance: 'none', MozAppearance: 'none', textIndent: '1px', textOverflow: '' }} // Hack to center text in select
+                                {/* Grouped Sticky Name Col */}
+                                <div className="flex sticky left-0 z-30 bg-white h-full border-r border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                    <div className="w-10 p-2 text-center border-r border-gray-300 font-bold flex items-center justify-center">
+                                        {index + 1}
+                                    </div>
+                                    <div className="w-12 border-r border-gray-300 flex items-center justify-center p-1">
+                                        <select
+                                            className="w-full h-full text-center text-sm font-bold border rounded outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                                            value={player.position || ''}
+                                            onChange={(e) => handlePositionChange(index, e.target.value)}
+                                            style={{ WebkitAppearance: 'none', MozAppearance: 'none', textIndent: '1px', textOverflow: '' }} // Hack to center text in select
+                                        >
+                                            <option value="">-</option>
+                                            <option value="投">投</option>
+                                            <option value="捕">捕</option>
+                                            <option value="一">一</option>
+                                            <option value="二">二</option>
+                                            <option value="三">三</option>
+                                            <option value="遊">遊</option>
+                                            <option value="左">左</option>
+                                            <option value="中">中</option>
+                                            <option value="右">右</option>
+                                            <option value="DH">DH</option>
+                                        </select>
+                                    </div>
+                                    <div
+                                        className="w-28 p-2 flex flex-col justify-center overflow-hidden cursor-pointer hover:bg-gray-50 bg-white"
+                                        onClick={() => handlePlayerNameClick(index)}
                                     >
-                                        <option value="">-</option>
-                                        <option value="投">投</option>
-                                        <option value="捕">捕</option>
-                                        <option value="一">一</option>
-                                        <option value="二">二</option>
-                                        <option value="三">三</option>
-                                        <option value="遊">遊</option>
-                                        <option value="左">左</option>
-                                        <option value="中">中</option>
-                                        <option value="右">右</option>
-                                        <option value="DH">DH</option>
-                                    </select>
-                                </div>
-                                <div
-                                    className="w-28 p-2 border-r border-gray-300 bg-white sticky left-[5.5rem] z-30 flex flex-col justify-center overflow-hidden cursor-pointer hover:bg-gray-50"
-                                    onClick={() => handlePlayerNameClick(index)}
-                                >
-                                    {/* Player Selector in future? For now just name */}
-                                    <span className={clsx("font-bold truncate text-base", !player.name && "text-gray-400")}>
-                                        {player.name || '(選手選択)'}
-                                    </span>
-                                    <div className="flex items-center mt-1">
-                                        <JerseyNumber number={player.number} size={20} color="bg-gray-600" />
+                                        {/* Player Selector in future? For now just name */}
+                                        <span className={clsx("font-bold truncate text-base", !player.name && "text-gray-400")}>
+                                            {player.name || '(選手選択)'}
+                                        </span>
+                                        <div className="flex items-center mt-1">
+                                            <JerseyNumber number={player.number} size={20} color="bg-gray-600" />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -834,25 +839,28 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
                     {/* Add/Remove Batter Controls */}
                     <div className="flex border-b border-gray-300 h-12 items-center bg-gray-100">
-                        <div className="w-10 flex flex-col h-full border-r border-gray-300 sticky left-0 z-30 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                            <button
-                                onClick={handleAddBatter}
-                                className="flex-1 bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 flex items-center justify-center border-b border-blue-200"
-                                title="打席を追加 (10人打ちなど)"
-                            >
-                                +
-                            </button>
-                            <button
-                                onClick={handleRemoveBatter}
-                                className={clsx("flex-1 font-bold flex items-center justify-center", currentLineup.length > 9 ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-gray-200 text-gray-400 cursor-not-allowed")}
-                                title={currentLineup.length > 9 ? "最後の打席を削除" : "9人を下回ることはできません"}
-                            >
-                                -
-                            </button>
-                        </div>
-                        <div className="w-12 sticky left-10 z-30 bg-gray-100 h-full border-r border-gray-300"></div>
-                        <div className="w-28 px-2 sticky left-[5.5rem] z-30 bg-gray-100 h-full border-r border-gray-300 flex items-center shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                            <span className="text-xs text-gray-500 font-bold">打順追加／削除</span>
+                        {/* Grouped Sticky Footer Left */}
+                        <div className="flex sticky left-0 z-30 bg-gray-100 h-full border-r border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            <div className="w-10 flex flex-col h-full border-r border-gray-300">
+                                <button
+                                    onClick={handleAddBatter}
+                                    className="flex-1 bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 flex items-center justify-center border-b border-blue-200"
+                                    title="打席を追加 (10人打ちなど)"
+                                >
+                                    +
+                                </button>
+                                <button
+                                    onClick={handleRemoveBatter}
+                                    className={clsx("flex-1 font-bold flex items-center justify-center", currentLineup.length > 9 ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-gray-200 text-gray-400 cursor-not-allowed")}
+                                    title={currentLineup.length > 9 ? "最後の打席を削除" : "9人を下回ることはできません"}
+                                >
+                                    -
+                                </button>
+                            </div>
+                            <div className="w-12 h-full border-r border-gray-300"></div>
+                            <div className="w-28 px-2 h-full flex items-center">
+                                <span className="text-xs text-gray-500 font-bold">打順追加／削除</span>
+                            </div>
                         </div>
                         <div className="flex-1 h-full bg-gray-100"></div>
                     </div>
