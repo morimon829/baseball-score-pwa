@@ -22,7 +22,10 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     const [activeTeam, setActiveTeam] = useState<'visitor' | 'home'>('visitor');
     const [modalOpen, setModalOpen] = useState(false);
     const [gameInfoModalOpen, setGameInfoModalOpen] = useState(false);
-    const [selectedCell, setSelectedCell] = useState<{ playerId: string, inning: number } | null>(null);
+    const [selectedCell, setSelectedCell] = useState<{ playerId: string, inning: string } | null>(null);
+
+    // Extra Innings State (allow forcing extra columns before data exists)
+    const [manualMaxInning, setManualMaxInning] = useState<number>(7);
 
     // Player Selection State
     const [playerModalOpen, setPlayerModalOpen] = useState(false);
@@ -33,7 +36,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         saveGame(game);
     }, [game]);
 
-    const handleCellClick = (playerId: string, inning: number) => {
+    const handleCellClick = (playerId: string, inning: string) => {
         setSelectedCell({ playerId, inning });
         setModalOpen(true);
     };
@@ -55,7 +58,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     };
 
     // Get Runners for current inning (excluding current selected player)
-    const getRunners = (inning: number, excludePlayerId: string) => {
+    const getRunners = (inning: string, excludePlayerId: string) => {
         const teamLines = activeTeam === 'visitor' ? game.visitorLineup : game.homeLineup;
         const teamScores = activeTeam === 'visitor' ? game.scores.visitor : game.scores.home;
 
@@ -90,9 +93,13 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
         if (strictOuts.includes(result)) {
             const currentScores = activeTeam === 'visitor' ? game.scores.visitor : game.scores.home;
-            // Calculate outs BEFORE this new input
+            // Calculate outs BEFORE this new input for the current base inning
+            const inningPrefix = inning.split('-')[0];
             const currentOuts = currentScores
-                .map(s => s.inningResults[inning])
+                .flatMap(s => Object.entries(s.inningResults)
+                    .filter(([k]) => k === inningPrefix || k.startsWith(`${inningPrefix}-`))
+                    .map(([_, r]) => r)
+                )
                 .filter(r => r && strictOuts.includes(r)).length;
 
             // Check if this new input makes it 3 outs
@@ -169,23 +176,30 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             // Auto Advance
             scores.forEach((s, idx) => {
                 if (s.playerId === playerId) return;
+
+                // Look only at the current inning turn (the specific column) for auto advance
                 const r = s.inningResults[inning];
                 const d = s.details[inning];
                 if (!r || isOut(r) || d?.isRun) return;
+
                 let base = 0;
                 if (d?.reachedThird) base = 3;
                 else if (d?.reachedSecond) base = 2;
                 else if (d?.reachedFirst) base = 1;
+
                 if (base === 0) return;
+
                 let advance = 0;
                 if (['安', '四', '死', '敬遠'].includes(result)) advance = 1;
                 if (result === '二') advance = 2;
                 if (result === '三') advance = 3;
                 if (result === '本') advance = 4;
                 if (['四', '死', '敬遠'].includes(result)) {
+                    // Force advance only if on 1st, or forced by runners behind (not deeply implemented yet, basic logic)
                     if (base === 1) advance = 1;
                     else advance = 0;
                 }
+
                 if (advance > 0) {
                     const newBase = base + advance;
                     let newDetails = { ...scores[idx].details[inning] };
@@ -206,8 +220,8 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
     const handleRunnerAdvance = (playerId: string, base: 1 | 2 | 3 | 4, isSteal: boolean = false) => {
         // Advance base
-        if (base === 4) toggleRun(playerId, selectedCell?.inning || 1);
-        else toggleBase(playerId, selectedCell?.inning || 1, base as any);
+        if (base === 4) toggleRun(playerId, selectedCell?.inning || '1');
+        else toggleBase(playerId, selectedCell?.inning || '1', base as any);
 
         // Helper for Steal Count:
         if (isSteal) {
@@ -218,7 +232,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 if (entryIndex === -1) return prev;
 
                 const entry = { ...scores[entryIndex] };
-                const inning = selectedCell?.inning || 1;
+                const inning = selectedCell?.inning || '1';
                 const currentDetails = entry.details[inning] || { rbi: 0, isRun: false, stolenBases: 0 };
 
                 entry.details = {
@@ -232,7 +246,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     };
 
     // Toggle Run (for simplicity, toggle when Result exists)
-    const toggleRun = (playerId: string, inning: number) => {
+    const toggleRun = (playerId: string, inning: string) => {
         setGame(prev => {
             const teamKey = activeTeam;
             const scores = [...prev.scores[teamKey]];
@@ -250,7 +264,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         });
     };
 
-    const toggleBase = (playerId: string, inning: number, base: 1 | 2 | 3) => {
+    const toggleBase = (playerId: string, inning: string, base: 1 | 2 | 3) => {
         setGame(prev => {
             const teamKey = activeTeam;
             const scores = [...prev.scores[teamKey]];
@@ -337,6 +351,54 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         });
     };
 
+    const handleAddBattingAroundColumn = (inningNum: string) => {
+        // Find the next turn number for this inning
+        let maxTurn = 1;
+        currentScores.forEach(s => {
+            Object.keys(s.inningResults).forEach(key => {
+                const parts = key.split('-');
+                if (parts[0] === inningNum && parts.length > 1) {
+                    const turn = parseInt(parts[1]);
+                    if (turn > maxTurn) maxTurn = turn;
+                }
+            });
+        });
+        const nextTurn = maxTurn + 1;
+        const newKey = `${inningNum}-${nextTurn}`;
+
+        // To force the column to appear, we define it in the first player's record (or anyone's).
+        // It will be drawn for everyone once it exists in the data.
+        setGame(prev => {
+            const teamKey = activeTeam;
+            const scores = [...prev.scores[teamKey]];
+
+            // Just attach an empty string to the first player in the lineup to force rendering.
+            // If the player doesn't have an entry yet, create one.
+            const firstPlayerId = currentLineup[0].id;
+            let entryIndex = scores.findIndex(s => s.playerId === firstPlayerId);
+
+            if (entryIndex === -1) {
+                scores.push({
+                    playerId: firstPlayerId,
+                    inningResults: { [newKey]: '' },
+                    details: {}
+                });
+            } else {
+                const entry = { ...scores[entryIndex] };
+                entry.inningResults = { ...entry.inningResults, [newKey]: '' };
+                scores[entryIndex] = entry;
+            }
+
+            return {
+                ...prev,
+                scores: {
+                    ...prev.scores,
+                    [teamKey]: scores
+                }
+            };
+        });
+    };
+
     const handleErrorClick = (playerId: string) => {
         setGame(prev => {
             const teamKey = activeTeam;
@@ -374,32 +436,59 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     const currentLineup = activeTeam === 'visitor' ? game.visitorLineup : game.homeLineup;
     const currentScores = activeTeam === 'visitor' ? game.scores.visitor : game.scores.home;
 
-    const totalInnings = Math.max(7, game.currentInning,
-        // find max inning recorded
-        ...currentScores.flatMap(s => Object.keys(s.inningResults).map(Number))
+    // 1. Find the maximum base inning (at least 7, or manualMaxInning, or max data inning)
+    const maxDataInning = Math.max(
+        0,
+        ...game.scores.visitor.flatMap(s => Object.keys(s.inningResults).map(k => parseInt(k.split('-')[0]) || 0)),
+        ...game.scores.home.flatMap(s => Object.keys(s.inningResults).map(k => parseInt(k.split('-')[0]) || 0))
     );
+    const maxBaseInning = Math.max(7, manualMaxInning, game.currentInning, maxDataInning);
 
-    const innings = Array.from({ length: totalInnings }, (_, i) => i + 1);
+    // Sync manualMaxInning with data to prevent it from going backwards
+    useEffect(() => {
+        if (maxDataInning > manualMaxInning) {
+            setManualMaxInning(maxDataInning);
+        }
+        if (game.currentInning > manualMaxInning) {
+            setManualMaxInning(game.currentInning);
+        }
+    }, [maxDataInning, game.currentInning, manualMaxInning]);
+
+    // 2. Determine how many columns each base inning needs
+    // For each inning 1..maxBaseInning, we check if any 'X-2', 'X-3' exists in data
+    const columnKeys: string[] = [];
+    for (let i = 1; i <= maxBaseInning; i++) {
+        columnKeys.push(`${i}`); // Always have the base column
+
+        // Find max turn for this inning in the data
+        let maxTurn = 1;
+        currentScores.forEach(s => {
+            Object.keys(s.inningResults).forEach(key => {
+                const parts = key.split('-');
+                if (parseInt(parts[0]) === i && parts.length > 1) {
+                    const turn = parseInt(parts[1]);
+                    if (turn > maxTurn) maxTurn = turn;
+                }
+            });
+        });
+
+        // Add extra columns if maxTurn > 1
+        for (let t = 2; t <= maxTurn; t++) {
+            columnKeys.push(`${i}-${t}`);
+        }
+    }
 
     // Calculate Current Outs (for game.currentInning)
-    const currentOuts = currentScores
-        .map(s => s.inningResults[game.currentInning])
-        .filter(r => r && isOut(r)).length;
+    // To do this accurately with batting around, we need to count outs in ALL columns for the current inning.
+    const currentInningPrefix = `${game.currentInning}`;
+    const currentOuts = currentScores.flatMap(s =>
+        Object.entries(s.inningResults)
+            .filter(([key]) => key === currentInningPrefix || key.startsWith(`${currentInningPrefix}-`))
+            .map(([_, res]) => res)
+    ).filter(r => r && isOut(r)).length;
 
-    // Check for 3 Outs
-    useEffect(() => {
-        if (currentOuts >= 3) {
-            // Check if already handled? No usually re-render triggers this.
-            // We don't want to spam alerts.
-            // But we can't easily track "Alerted for this inning".
-            // Let's use a timeout or just show a Toast?
-            // "Confirm" dialog is blocking and bad in useEffect.
-            // Let's just allow user to click a "Change" button that appears?
-            // Or maybe handling it in setGame is better? 
-            // setGame is in handleInput.
-            // Let's move this logic to handleInput to be triggered ONCE when the 3rd out is made.
-        }
-    }, [currentOuts, game.currentInning, activeTeam]);
+    // Check for 3 Outs - handled inside handleInput to avoid spam/double-triggers during state re-renders
+
 
     return (
         <div className="bg-white min-h-screen flex flex-col" id="score-sheet-container">
@@ -500,9 +589,39 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                             <span>位置</span>
                         </div>
                         <div className="w-28 p-2 text-center border-r border-gray-300 sticky left-[5.5rem] bg-gray-100 z-50">氏名</div>
-                        {innings.map(i => (
-                            <div key={i} className="w-16 p-2 text-center border-r border-gray-300 min-w-[4rem]">{i}回</div>
-                        ))}
+                        {columnKeys.map(key => {
+                            const parts = key.split('-');
+                            const inningNum = parts[0];
+                            const turn = parts.length > 1 ? parseInt(parts[1]) : 1;
+
+                            // Determine if this is the last column for this specific inning
+                            const isLastTurnForInning = !columnKeys.includes(`${inningNum}-${turn + 1}`);
+
+                            return (
+                                <div key={key} className="w-16 p-1 text-center border-r border-gray-300 min-w-[4rem] relative flex flex-col items-center justify-center">
+                                    <span>{inningNum}回{turn > 1 ? `-${turn}` : ''}</span>
+                                    {isLastTurnForInning && (
+                                        <button
+                                            onClick={() => handleAddBattingAroundColumn(inningNum)}
+                                            className="absolute top-0 right-0 text-[10px] bg-blue-100 text-blue-600 px-1 rounded-bl opacity-50 hover:opacity-100"
+                                            title="打者一巡（列を追加）"
+                                        >
+                                            +
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        {/* Explicit Add Inning Button */}
+                        <div className="w-8 p-1 text-center border-r border-gray-300 min-w-[2rem] flex items-center justify-center bg-gray-200">
+                            <button
+                                onClick={() => setManualMaxInning(prev => prev + 1)}
+                                className="text-gray-600 hover:text-black font-bold text-lg w-full h-full rounded hover:bg-gray-300 transition-colors"
+                                title="イニングを追加"
+                            >
+                                +
+                            </button>
+                        </div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">打席</div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">打数</div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">安打</div>
@@ -560,14 +679,14 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                 </div>
 
                                 {/* Innings */}
-                                {innings.map(i => {
-                                    const result = entry?.inningResults[i] || '';
-                                    const details = entry?.details[i];
+                                {columnKeys.map(key => {
+                                    const result = entry?.inningResults[key] || '';
+                                    const details = entry?.details[key];
                                     const isRun = details?.isRun;
 
                                     return (
                                         <div
-                                            key={i}
+                                            key={key}
                                             className="w-16 h-full border-r border-gray-300 min-w-[4rem] relative flex items-center justify-center p-1"
                                         >
                                             <ScorebookCell
@@ -576,11 +695,17 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                                 reachedFirst={details?.reachedFirst}
                                                 reachedSecond={details?.reachedSecond}
                                                 reachedThird={details?.reachedThird}
-                                                onClick={() => handleCellClick(player.id, i)}
+                                                // Convert string key to base inning number for UI logic if needed, 
+                                                // but pass the exact key to handler to save correctly.
+                                                // Note: handleCellClick currently takes a number. It needs to take a string now.
+                                                onClick={() => handleCellClick(player.id, key)}
                                             />
                                         </div>
                                     );
                                 })}
+
+                                {/* Empty separator for the Add Inning button column */}
+                                <div className="w-8 border-r border-gray-300 min-w-[2rem] bg-gray-50"></div>
 
                                 {/* Stats */}
                                 <div className="w-12 p-2 text-center border-r border-gray-300 font-bold bg-gray-50">{pa}</div>

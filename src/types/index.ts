@@ -33,9 +33,10 @@ export interface Team {
 
 export interface ScoreEntry {
     playerId: string;
-    inningResults: { [inning: number]: InningResult };
+    // Keys are strings to support "Batting Around": '1', '1-2', '2', etc. (Inning - Turn)
+    inningResults: { [inningKey: string]: InningResult };
     details: {
-        [inning: number]: {
+        [inningKey: string]: {
             rbi: number;
             isRun: boolean;
             // Runner advancement flags
@@ -43,8 +44,6 @@ export interface ScoreEntry {
             reachedSecond?: boolean;
             reachedThird?: boolean;
             stolenBases?: number; // Number of SBs in this inning
-            error?: number; // Errors in this inning (defensive) - KEEPING THIS for detailed tracking if needed, but adding top-level for simplicity?
-            // Actually, user might want to know WHEN. But top-level is safer for "Player didn't bat".
         }
     };
     defensiveErrors?: number;
