@@ -315,8 +315,21 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     const handlePositionChange = (index: number, newPosition: string) => {
         setGame(prev => {
             const isVisitor = activeTeam === 'visitor';
-            const lineup = isVisitor ? [...prev.visitorLineup] : [...prev.homeLineup];
+            const lineup = [...(isVisitor ? prev.visitorLineup : prev.homeLineup)];
+
+            // Auto-swap logic for 1-9 (DH can be multiple theoretically, but standard baseball has 1 DH. 
+            // We'll apply swap logic only to 1-9 to be safe and match user request).
+            if (newPosition >= '1' && newPosition <= '9') {
+                const existingIndex = lineup.findIndex((p, i) => i !== index && p.position === newPosition);
+                if (existingIndex !== -1) {
+                    // Swap: The other player gets the current player's old position
+                    const currentOldPosition = lineup[index].position;
+                    lineup[existingIndex] = { ...lineup[existingIndex], position: currentOldPosition };
+                }
+            }
+
             lineup[index] = { ...lineup[index], position: newPosition };
+
             return {
                 ...prev,
                 [isVisitor ? 'visitorLineup' : 'homeLineup']: lineup
