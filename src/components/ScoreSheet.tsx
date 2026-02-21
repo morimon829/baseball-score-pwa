@@ -495,7 +495,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     {/* Table Header */}
                     <div className="flex border-b-2 border-black bg-gray-100 font-bold text-sm sticky top-0 z-40">
                         <div className="w-10 p-2 text-center border-r border-gray-300 sticky left-0 bg-gray-100 z-50">打順</div>
-                        <div className="w-12 p-2 text-center border-r border-gray-300 sticky left-10 bg-gray-100 z-50 text-xs flex items-center justify-center">位置</div>
+                        <div className="w-12 p-2 text-center border-r border-gray-300 sticky left-10 bg-gray-100 z-50 text-xs flex items-center justify-center p-0">守備位置</div>
                         <div className="w-28 p-2 text-center border-r border-gray-300 sticky left-[5.5rem] bg-gray-100 z-50">氏名</div>
                         {innings.map(i => (
                             <div key={i} className="w-16 p-2 text-center border-r border-gray-300 min-w-[4rem]">{i}回</div>
