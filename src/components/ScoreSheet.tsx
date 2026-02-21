@@ -399,6 +399,44 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         });
     };
 
+    const handleRemoveBattingAroundColumn = (inningNum: string, turn: number) => {
+        const targetKey = `${inningNum}-${turn}`;
+
+        // Safety check: is there any data besides empty strings?
+        let hasData = false;
+        currentScores.forEach(s => {
+            if (s.inningResults[targetKey] && (s.inningResults[targetKey] as string) !== '') hasData = true;
+            if (s.details[targetKey] && Object.keys(s.details[targetKey]).length > 0) hasData = true;
+        });
+
+        if (hasData) {
+            if (!window.confirm(`この列（${inningNum}回${turn > 1 ? `-${turn}` : ''}）にはデータが入力されています。本当に削除しますか？`)) {
+                return;
+            }
+        }
+
+        setGame(prev => {
+            const teamKey = activeTeam;
+            const scores = [...prev.scores[teamKey]].map(s => {
+                const newInningResults = { ...s.inningResults };
+                delete newInningResults[targetKey];
+
+                const newDetails = { ...s.details };
+                delete newDetails[targetKey];
+
+                return { ...s, inningResults: newInningResults, details: newDetails };
+            });
+
+            return {
+                ...prev,
+                scores: {
+                    ...prev.scores,
+                    [teamKey]: scores
+                }
+            };
+        });
+    };
+
     const handleErrorClick = (playerId: string) => {
         setGame(prev => {
             const teamKey = activeTeam;
@@ -601,26 +639,46 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                 <div key={key} className="w-16 p-1 text-center border-r border-gray-300 min-w-[4rem] relative flex flex-col items-center justify-center">
                                     <span>{inningNum}回{turn > 1 ? `-${turn}` : ''}</span>
                                     {isLastTurnForInning && (
-                                        <button
-                                            onClick={() => handleAddBattingAroundColumn(inningNum)}
-                                            className="absolute top-0 right-0 text-[10px] bg-blue-100 text-blue-600 px-1 rounded-bl opacity-50 hover:opacity-100"
-                                            title="打者一巡（列を追加）"
-                                        >
-                                            +
-                                        </button>
+                                        <div className="absolute top-0 right-0 flex shadow-sm">
+                                            {turn > 1 && (
+                                                <button
+                                                    onClick={() => handleRemoveBattingAroundColumn(inningNum, turn)}
+                                                    className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-l opacity-50 hover:opacity-100 border-r border-red-200 leading-none"
+                                                    title="列を削除"
+                                                >
+                                                    -
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleAddBattingAroundColumn(inningNum)}
+                                                className={clsx("text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 opacity-50 hover:opacity-100 leading-none", turn > 1 ? "rounded-r" : "rounded-bl")}
+                                                title="打者一巡（列を追加）"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             );
                         })}
                         {/* Explicit Add Inning Button */}
-                        <div className="w-8 p-1 text-center border-r border-gray-300 min-w-[2rem] flex items-center justify-center bg-gray-200">
+                        <div className="w-8 p-0 text-center border-r border-gray-300 min-w-[2rem] flex flex-col items-center justify-center bg-gray-200">
                             <button
                                 onClick={() => setManualMaxInning(prev => prev + 1)}
-                                className="text-gray-600 hover:text-black font-bold text-lg w-full h-full rounded hover:bg-gray-300 transition-colors"
+                                className="text-gray-600 hover:text-black font-bold text-lg w-full flex-1 hover:bg-gray-300 transition-colors flex items-center justify-center leading-none"
                                 title="イニングを追加"
                             >
                                 +
                             </button>
+                            {manualMaxInning > Math.max(7, maxDataInning, game.currentInning) && (
+                                <button
+                                    onClick={() => setManualMaxInning(prev => Math.max(7, prev - 1))}
+                                    className="text-gray-600 hover:text-black font-bold text-lg w-full flex-1 hover:bg-gray-300 transition-colors flex items-center justify-center leading-none border-t border-gray-300"
+                                    title="不要なイニングを削除"
+                                >
+                                    -
+                                </button>
+                            )}
                         </div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">打席</div>
                         <div className="w-12 p-2 text-center border-r border-gray-300">打数</div>
