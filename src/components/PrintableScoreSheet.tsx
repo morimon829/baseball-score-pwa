@@ -52,6 +52,63 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
         const scores = game.scores[team];
         const rowCount = 14;
 
+        // Pre-calculate out numbers for chronological sequence
+        const isOutForCount = (res: string) => ['振', '逃振', '投ゴ', '捕ゴ', '一ゴ', '二ゴ', '三ゴ', '遊ゴ', '投飛', '捕飛', '一飛', '二飛', '三飛', '遊飛', '左飛', '中飛', '右飛', '犠飛', '犠打', '打妨', '守妨'].includes(res);
+        const allAtBats: { playerId: string, inning: number, turn: number, res: string, isRun: boolean, playerIdx: number, key: string }[] = [];
+        lineup.forEach((player, playerIdx) => {
+            const entry = scores.find(s => s.playerId === player.id);
+            if (!entry) return;
+            Object.keys(entry.inningResults).forEach(key => {
+                const parts = key.split('-');
+                if (entry.inningResults[key]) {
+                    allAtBats.push({
+                        playerId: player.id,
+                        inning: parseInt(parts[0]),
+                        turn: parts.length > 1 ? parseInt(parts[1]) : 1,
+                        res: entry.inningResults[key],
+                        isRun: !!entry.details[key]?.isRun,
+                        playerIdx,
+                        key
+                    });
+                }
+            });
+        });
+
+        const outAssignment = new Map<string, string>();
+        let currentBatterIndex = 0;
+        const lineupLength = lineup.length > 0 ? lineup.length : 9;
+
+        for (let inn = 1; inn <= 20; inn++) {
+            const inningAtBats = allAtBats.filter(a => a.inning === inn).sort((a, b) => a.turn - b.turn);
+            if (inningAtBats.length === 0) continue;
+
+            let outs = 0;
+            let loopCounter = 0;
+            while (inningAtBats.length > 0 && loopCounter < 200) {
+                const abIndex = inningAtBats.findIndex(a => a.playerIdx === currentBatterIndex);
+                if (abIndex !== -1) {
+                    const ab = inningAtBats.splice(abIndex, 1)[0];
+                    if (isOutForCount(ab.res)) {
+                        outs++;
+                        if (!['犠打', '犠飛'].includes(ab.res)) {
+                            outAssignment.set(`${ab.playerId}_${ab.key}`, outs === 1 ? 'Ⅰ' : outs === 2 ? 'Ⅱ' : outs === 3 ? 'Ⅲ' : '');
+                        }
+                    }
+                }
+                currentBatterIndex = (currentBatterIndex + 1) % lineupLength;
+                loopCounter++;
+            }
+        }
+
+        const formatResult = (res: string, playerId: string, key: string, isRun: boolean) => {
+            let formatted = res;
+            if (['犠打', '犠飛'].includes(res)) formatted = 'ギ';
+            else if (outAssignment.has(`${playerId}_${key}`)) formatted = outAssignment.get(`${playerId}_${key}`)!;
+
+            if (isRun) formatted += '〇';
+            return formatted;
+        };
+
         return (
             <div className="flex-1 flex flex-col mx-1">
                 {/* Team Name Header (Outside the main table border) */}
@@ -104,7 +161,11 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
 
                                 {[1, 2, 3, 4, 5, 6, 7].map(i => {
                                     const keys = entry ? Object.keys(entry.inningResults).filter(k => k.startsWith(`${i}`) && (k === `${i}` || k.includes('-'))) : [];
-                                    const cellResults = keys.map(k => entry!.inningResults[k]).filter(Boolean);
+                                    const cellResults = keys.map(k => {
+                                        const res = entry!.inningResults[k];
+                                        if (!res) return null;
+                                        return formatResult(res, player!.id, k, !!entry!.details[k]?.isRun);
+                                    }).filter(Boolean) as string[];
 
                                     return (
                                         <div key={i} className="flex-1 border-r border-black flex flex-col items-center justify-center text-[10px] leading-tight overflow-hidden px-0.5 whitespace-nowrap">
