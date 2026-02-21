@@ -874,7 +874,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {[0, 1, 2, 3].map(idx => {
+                                {Array.from({ length: Math.max(4, game.pitcherRecords?.[activeTeam]?.length || 4) }).map((_, idx) => {
                                     const records = game.pitcherRecords?.[activeTeam] || [];
                                     const entry = records[idx] || { id: '', name: '', innings: '', er: 0, result: '' };
 
@@ -944,6 +944,64 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                 })}
                             </tbody>
                         </table>
+
+                        {/* Add/Remove Pitcher Controls */}
+                        <div className="flex border-t border-gray-300">
+                            <button
+                                onClick={() => {
+                                    setGame(prev => {
+                                        const teamKey = activeTeam;
+                                        const newRecords = [...(prev.pitcherRecords?.[teamKey] || [])];
+                                        // Ensure we pad up to the current visible rows before adding a new one
+                                        const currentLen = Math.max(4, newRecords.length);
+                                        while (newRecords.length < currentLen) newRecords.push({ id: '', name: '', innings: '', er: 0, result: '' });
+                                        newRecords.push({ id: '', name: '', innings: '', er: 0, result: '' });
+                                        return {
+                                            ...prev,
+                                            pitcherRecords: { ...prev.pitcherRecords, [teamKey]: newRecords }
+                                        };
+                                    });
+                                }}
+                                className="flex-1 p-1 bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 border-r border-gray-300"
+                                title="投手を追加"
+                            >
+                                +
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setGame(prev => {
+                                        const teamKey = activeTeam;
+                                        const newRecords = [...(prev.pitcherRecords?.[teamKey] || [])];
+                                        const currentVisibleLen = Math.max(4, newRecords.length);
+
+                                        if (currentVisibleLen <= 4) {
+                                            alert('基本の4枠を下回ることはできません。');
+                                            return prev;
+                                        }
+
+                                        const lastEntry = newRecords[newRecords.length - 1];
+                                        if (lastEntry && (lastEntry.name || lastEntry.innings || lastEntry.er > 0 || lastEntry.result)) {
+                                            if (!window.confirm('最後の投手の記録が入力されています。本当に削除しますか？')) {
+                                                return prev;
+                                            }
+                                        }
+
+                                        newRecords.pop();
+                                        return {
+                                            ...prev,
+                                            pitcherRecords: { ...prev.pitcherRecords, [teamKey]: newRecords }
+                                        };
+                                    });
+                                }}
+                                className={clsx("flex-1 p-1 font-bold",
+                                    Math.max(4, game.pitcherRecords?.[activeTeam]?.length || 4) > 4
+                                        ? "bg-red-100 text-red-600 hover:bg-red-200"
+                                        : "bg-gray-200 text-gray-400 cursor-not-allowed")}
+                                title={Math.max(4, game.pitcherRecords?.[activeTeam]?.length || 4) > 4 ? "最後の投手を削除" : "4枠以下にはできません"}
+                            >
+                                -
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
