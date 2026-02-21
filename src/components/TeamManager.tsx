@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Team, Player } from '../types';
-import { loadTeams, saveTeams } from '../utils/storage';
+import { loadTeams, saveTeams, loadGames } from '../utils/storage';
 import { Plus, Trash2, UserPlus, ArrowLeft, Pencil, Check, X, ArrowRightLeft } from 'lucide-react';
 import { JerseyNumber } from './JerseyNumber';
 
@@ -67,7 +67,14 @@ export const TeamManager: React.FC<Props> = ({ onBack }) => {
     };
 
     const deleteTeam = (id: string) => {
-        if (confirm('チームを削除してもよろしいですか？\n登録されている選手データも削除されます。')) {
+        const games = loadGames();
+        const hasHistory = games.some(g => g.teams?.visitor?.id === id || g.teams?.home?.id === id);
+
+        const message = hasHistory
+            ? '※このチームは過去の試合データに紐づいています。\n削除すると過去の試合成績や履歴に影響が出る可能性があります。\n\n本当に削除してもよろしいですか？'
+            : 'チームを削除してもよろしいですか？\n登録されている選手データも削除されます。';
+
+        if (confirm(message)) {
             handleSaveTeams(teams.filter(t => t.id !== id));
             if (editingTeamId === id) setEditingTeamId(null);
         }
@@ -92,6 +99,36 @@ export const TeamManager: React.FC<Props> = ({ onBack }) => {
     };
 
     const deletePlayer = (teamId: string, playerId: string) => {
+        const games = loadGames();
+        let hasData = false;
+
+        // Check if the player has any real data in any game
+        for (const game of games) {
+            const isVisitor = game.teams?.visitor?.id === teamId;
+            const isHome = game.teams?.home?.id === teamId;
+
+            if (isVisitor || isHome) {
+                const teamScores = isVisitor ? game.scores.visitor : game.scores.home;
+                const entry = teamScores.find(s => s.playerId === playerId);
+                if (entry) {
+                    if (Object.values(entry.inningResults).some(v => v !== '')) hasData = true;
+                    if (Object.values(entry.details).some((d: any) => Object.keys(d).length > 0)) hasData = true;
+
+                    // Also check pitching records
+                    const pTeamKey = isVisitor ? 'visitor' : 'home';
+                    const pRecords = game.pitcherRecords?.[pTeamKey] || [];
+                    if (pRecords.some(p => p.id === playerId && (p.innings || p.er > 0 || p.result))) hasData = true;
+                }
+            }
+            if (hasData) break;
+        }
+
+        const message = hasData
+            ? '※この選手は過去の試合成績が存在します。\n削除すると成績に影響が出る可能性があります。\n（チームを変更したい場合は「移籍」機能をご利用ください。）\n\n本当に削除してもよろしいですか？'
+            : 'この選手を削除してもよろしいですか？';
+
+        if (!confirm(message)) return;
+
         const updatedTeams = teams.map(team => {
             if (team.id === teamId) {
                 return { ...team, players: team.players.filter(p => p.id !== playerId) };

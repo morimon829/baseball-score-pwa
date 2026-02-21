@@ -13,6 +13,7 @@ export const StatsDashboard: React.FC<Props> = ({ onBack }) => {
     const [selectedTeamId, setSelectedTeamId] = useState<string>('all');
     const [filterPeriod, setFilterPeriod] = useState<'all' | 'year' | 'custom'>('all');
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+    const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
     // Custom range
     const [dateRange, setDateRange] = useState<{ start: string, end: string }>({
         start: `${new Date().getFullYear()}-01-01`,
@@ -26,8 +27,22 @@ export const StatsDashboard: React.FC<Props> = ({ onBack }) => {
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'average', direction: 'desc' });
 
     useEffect(() => {
-        setGames(loadGames());
+        const loadedGames = loadGames();
+        setGames(loadedGames);
         setTeams(loadTeams());
+
+        // Extract unique years from games
+        const years = Array.from(new Set(loadedGames.map(g => {
+            const d = new Date(g.date);
+            return isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+        }))).sort((a, b) => b - a); // descending
+
+        if (years.length > 0) {
+            setAvailableYears(years);
+            if (!years.includes(selectedYear)) {
+                setSelectedYear(years[0]);
+            }
+        }
     }, []);
 
     const handleSort = (key: string) => {
@@ -142,7 +157,7 @@ export const StatsDashboard: React.FC<Props> = ({ onBack }) => {
                             onChange={(e) => setSelectedYear(Number(e.target.value))}
                             className="border rounded p-1"
                         >
-                            {[2024, 2025, 2026, 2027].map(y => (
+                            {availableYears.map(y => (
                                 <option key={y} value={y}>{y}年</option>
                             ))}
                         </select>
