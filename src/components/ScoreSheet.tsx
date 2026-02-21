@@ -312,6 +312,18 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
         setPlayerModalOpen(false);
     };
 
+    const handlePositionChange = (index: number, newPosition: string) => {
+        setGame(prev => {
+            const isVisitor = activeTeam === 'visitor';
+            const lineup = isVisitor ? [...prev.visitorLineup] : [...prev.homeLineup];
+            lineup[index] = { ...lineup[index], position: newPosition };
+            return {
+                ...prev,
+                [isVisitor ? 'visitorLineup' : 'homeLineup']: lineup
+            };
+        });
+    };
+
     const handleErrorClick = (playerId: string) => {
         setGame(prev => {
             const teamKey = activeTeam;
@@ -470,7 +482,8 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     {/* Table Header */}
                     <div className="flex border-b-2 border-black bg-gray-100 font-bold text-sm sticky top-0 z-40">
                         <div className="w-10 p-2 text-center border-r border-gray-300 sticky left-0 bg-gray-100 z-50">打順</div>
-                        <div className="w-32 p-2 text-center border-r border-gray-300 sticky left-10 bg-gray-100 z-50">氏名</div>
+                        <div className="w-12 p-2 text-center border-r border-gray-300 sticky left-10 bg-gray-100 z-50 text-xs flex items-center justify-center">位置</div>
+                        <div className="w-28 p-2 text-center border-r border-gray-300 sticky left-[5.5rem] bg-gray-100 z-50">氏名</div>
                         {innings.map(i => (
                             <div key={i} className="w-16 p-2 text-center border-r border-gray-300 min-w-[4rem]">{i}回</div>
                         ))}
@@ -497,8 +510,18 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                                 <div className="w-10 p-2 text-center border-r border-gray-300 font-bold bg-white sticky left-0 z-30 flex items-center justify-center">
                                     {index + 1}
                                 </div>
+                                <div className="w-12 border-r border-gray-300 bg-white sticky left-10 z-30 flex items-center justify-center p-1">
+                                    <input
+                                        type="text"
+                                        className="w-full h-full text-center text-sm font-bold border rounded outline-none focus:ring-1 focus:ring-blue-500"
+                                        value={player.position || ''}
+                                        onChange={(e) => handlePositionChange(index, e.target.value)}
+                                        placeholder="-"
+                                        maxLength={2}
+                                    />
+                                </div>
                                 <div
-                                    className="w-32 p-2 border-r border-gray-300 bg-white sticky left-10 z-30 flex flex-col justify-center overflow-hidden cursor-pointer hover:bg-gray-50"
+                                    className="w-28 p-2 border-r border-gray-300 bg-white sticky left-[5.5rem] z-30 flex flex-col justify-center overflow-hidden cursor-pointer hover:bg-gray-50"
                                     onClick={() => handlePlayerNameClick(index)}
                                 >
                                     {/* Player Selector in future? For now just name */}

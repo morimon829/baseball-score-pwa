@@ -66,8 +66,8 @@ export interface Game {
         visitor: Team;
         home: Team;
     };
-    visitorLineup: (Player & { order: number })[];
-    homeLineup: (Player & { order: number })[];
+    visitorLineup: (Player & { order: number; position?: string })[];
+    homeLineup: (Player & { order: number; position?: string })[];
     scores: {
         visitor: ScoreEntry[];
         home: ScoreEntry[];
