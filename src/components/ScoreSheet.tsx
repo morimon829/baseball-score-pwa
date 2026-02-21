@@ -10,6 +10,7 @@ import { ArrowLeft, Download, Clock, User } from 'lucide-react';
 import { saveGame } from '../utils/storage';
 import { clsx } from 'clsx';
 import { generatePDF } from '../utils/pdfGenerator';
+import { PrintableScoreSheet } from './PrintableScoreSheet';
 
 interface Props {
     game: Game;
@@ -1050,6 +1051,11 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     onClose={() => setGameInfoModalOpen(false)}
                 />
             )}
+
+            {/* Hidden Printable Score Sheet for PDF Export */}
+            <div className="absolute top-0" style={{ left: '-9999px' }}>
+                <PrintableScoreSheet game={game} />
+            </div>
         </div >
     );
 };

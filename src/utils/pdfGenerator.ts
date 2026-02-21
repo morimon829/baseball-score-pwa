@@ -38,11 +38,12 @@ export const generatePDF = async (game: Game) => {
     // To avoid complex off-screen rendering of React components, 
     // we might stick to capturing the "Current Active View" but fully expanded?
 
-    // Let's try to capture `document.body` or a specific container.
-    // We will assume a `id="score-sheet-content"` on the main wrapper.
-
-    const element = document.getElementById('score-sheet-container');
-    if (!element) return;
+    // We target the hidden PrintableScoreSheet component which has the exact A4 layout
+    const element = document.getElementById('pdf-export-container');
+    if (!element) {
+        alert('印刷用レイアウトが見つかりません');
+        return;
+    }
 
     try {
         const canvas = await html2canvas(element, {
