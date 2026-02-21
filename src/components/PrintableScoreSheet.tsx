@@ -10,6 +10,8 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
     // At 96 DPI, this is 1123px x 794px. We will use these fixed pixel dimensions for the container
     // so that html2canvas generates a perfectly scaled A4 image regardless of device zoom.
 
+    const [year, month, day] = (game.date || '').split('-');
+
     // Helper to calculate total runs and per-inning runs
     const getScoreData = (team: 'visitor' | 'home') => {
         const scores = game.scores[team];
@@ -131,11 +133,11 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
             <div className="flex mb-2 h-32">
                 {/* Left Info */}
                 <div className="w-56 flex flex-col justify-between text-sm pr-4">
-                    <div className="flex justify-between border-b border-black pb-1">
-                        <span>実施日</span>
-                        <span>年</span>
-                        <span>月</span>
-                        <span>日</span>
+                    <div className="flex items-end border-b border-black pb-1">
+                        <span className="w-14">実施日</span>
+                        <span className="flex-1 text-center leading-none">{year || ''}</span><span>年</span>
+                        <span className="w-8 text-center leading-none">{month || ''}</span><span>月</span>
+                        <span className="w-8 text-center leading-none">{day || ''}</span><span>日</span>
                     </div>
                     <div className="mt-2 flex items-end">
                         <span className="w-16 pb-1">主審名</span>
