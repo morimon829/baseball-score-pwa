@@ -90,9 +90,7 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
                     const ab = inningAtBats.splice(abIndex, 1)[0];
                     if (isOutForCount(ab.res)) {
                         outs++;
-                        if (!['犠打', '犠飛'].includes(ab.res)) {
-                            outAssignment.set(`${ab.playerId}_${ab.key}`, outs === 1 ? 'Ⅰ' : outs === 2 ? 'Ⅱ' : outs === 3 ? 'Ⅲ' : '');
-                        }
+                        outAssignment.set(`${ab.playerId}_${ab.key}`, outs === 1 ? 'Ⅰ' : outs === 2 ? 'Ⅱ' : outs === 3 ? 'Ⅲ' : '');
                     }
                 }
                 currentBatterIndex = (currentBatterIndex + 1) % lineupLength;
@@ -102,8 +100,13 @@ export const PrintableScoreSheet: React.FC<Props> = ({ game }) => {
 
         const formatResult = (res: string, playerId: string, key: string, isRun: boolean) => {
             let formatted = res;
-            if (['犠打', '犠飛'].includes(res)) formatted = 'ギ';
-            else if (outAssignment.has(`${playerId}_${key}`)) formatted = outAssignment.get(`${playerId}_${key}`)!;
+            const outRoman = outAssignment.get(`${playerId}_${key}`);
+
+            if (['犠打', '犠飛'].includes(res)) {
+                formatted = 'ギ' + (outRoman || '');
+            } else if (outRoman) {
+                formatted = outRoman;
+            }
 
             if (isRun) formatted += '〇';
             return formatted;
