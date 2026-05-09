@@ -6,6 +6,7 @@ interface Runner {
     playerId: string;
     name: string;
     currentBase: 1 | 2 | 3;
+    stolenBases?: number;
 }
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
     onSelect: (result: InningResult, isOut: boolean) => void;
     hasRun: boolean;
     onToggleRun: () => void;
+    currentRbi: number;
+    onUpdateRbi: (rbi: number) => void;
     // New props for runner details
     reachedFirst: boolean;
     reachedSecond: boolean;
@@ -21,6 +24,7 @@ interface Props {
     onToggleBase: (base: 1 | 2 | 3) => void;
     runners?: Runner[];
     onRunnerAdvance?: (playerId: string, base: 1 | 2 | 3 | 4, isSteal?: boolean) => void;
+    onRunnerAction?: (playerId: string, action: 'steal' | 'undo_steal' | 'caught_stealing', base?: 1 | 2 | 3) => void;
 }
 
 export const InputModal: React.FC<Props> = ({
@@ -34,7 +38,10 @@ export const InputModal: React.FC<Props> = ({
     reachedThird,
     onToggleBase,
     runners = [],
-    onRunnerAdvance
+    onRunnerAdvance,
+    currentRbi,
+    onUpdateRbi,
+    onRunnerAction
 }) => {
     const [category, setCategory] = useState<string | null>(null);
     const [position, setPosition] = useState<number | null>(null);
@@ -167,6 +174,8 @@ export const InputModal: React.FC<Props> = ({
                     <button onClick={() => handleSelect('打妨', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">打撃妨害</button>
                     <button onClick={() => handleSelect('守妨', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">守備妨害</button>
                     <button onClick={() => handleSelect('逃振', false)} className="p-3 bg-white border border-gray-300 rounded font-bold text-lg hover:bg-gray-100">振り逃げ</button>
+                    <button onClick={() => handleSelect('盗死', true)} className="p-3 bg-red-50 border border-red-200 rounded font-bold text-lg hover:bg-red-100 text-red-700">盗塁死</button>
+                    <button onClick={() => handleSelect('牽死', true)} className="p-3 bg-red-50 border border-red-200 rounded font-bold text-lg hover:bg-red-100 text-red-700">牽制死</button>
                     <button onClick={() => setCategory(null)} className="p-3 col-span-2 mt-2 bg-gray-200 rounded font-bold text-gray-600">戻る</button>
                 </div>
             );
@@ -217,6 +226,12 @@ export const InputModal: React.FC<Props> = ({
                             {hasRun && <span className="bg-white text-red-600 rounded-full w-4 h-4 flex items-center justify-center text-[10px]">✓</span>}
                         </button>
                     </div>
+                    <div className="flex items-center space-x-2 mt-2 pt-2 border-t border-blue-100 justify-center">
+                        <span className="font-bold text-sm text-blue-900">打点:</span>
+                        <button onClick={() => onUpdateRbi(Math.max(0, currentRbi - 1))} className="w-8 h-8 rounded-full bg-white border border-gray-400 font-bold flex items-center justify-center text-gray-600 hover:bg-gray-50">-</button>
+                        <span className="font-bold w-4 text-center">{currentRbi}</span>
+                        <button onClick={() => onUpdateRbi(currentRbi + 1)} className="w-8 h-8 rounded-full bg-white border border-gray-400 font-bold flex items-center justify-center text-gray-600 hover:bg-gray-50">+</button>
+                    </div>
                 </div>
 
                 <div className="p-4 overflow-y-auto">
@@ -233,7 +248,7 @@ export const InputModal: React.FC<Props> = ({
                                                 {runner.currentBase === 1 ? '1塁' : runner.currentBase === 2 ? '2塁' : '3塁'}
                                             </span>
                                         </div>
-                                        <div className="flex space-x-1">
+                                        <div className="flex space-x-1 flex-wrap gap-y-1 justify-end">
                                             {runner.currentBase < 2 && (
                                                 <>
                                                     <button
@@ -243,7 +258,7 @@ export const InputModal: React.FC<Props> = ({
                                                         →2
                                                     </button>
                                                     <button
-                                                        onClick={() => onRunnerAdvance?.(runner.playerId, 2, true)}
+                                                        onClick={() => onRunnerAction ? onRunnerAction(runner.playerId, 'steal', 2) : onRunnerAdvance?.(runner.playerId, 2, true)}
                                                         className="px-2 py-1 bg-blue-100 border border-blue-300 rounded hover:bg-blue-200 text-sm text-blue-800 font-bold"
                                                     >
                                                         盗
@@ -259,7 +274,7 @@ export const InputModal: React.FC<Props> = ({
                                                         →3
                                                     </button>
                                                     <button
-                                                        onClick={() => onRunnerAdvance?.(runner.playerId, 3, true)}
+                                                        onClick={() => onRunnerAction ? onRunnerAction(runner.playerId, 'steal', 3) : onRunnerAdvance?.(runner.playerId, 3, true)}
                                                         className="px-2 py-1 bg-blue-100 border border-blue-300 rounded hover:bg-blue-200 text-sm text-blue-800 font-bold"
                                                     >
                                                         盗
@@ -268,10 +283,26 @@ export const InputModal: React.FC<Props> = ({
                                             )}
                                             <button
                                                 onClick={() => onRunnerAdvance?.(runner.playerId, 4 as any)} // 4 treated as Run
-                                                className="px-2 py-1 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 text-sm"
+                                                className="px-2 py-1 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 text-sm font-bold"
                                             >
                                                 生還
                                             </button>
+                                            {/* Caught Stealing */}
+                                            <button
+                                                onClick={() => onRunnerAction?.(runner.playerId, 'caught_stealing')}
+                                                className="px-2 py-1 bg-red-50 border border-red-200 text-red-600 rounded hover:bg-red-100 text-sm"
+                                            >
+                                                盗死
+                                            </button>
+                                            {/* Undo Steal */}
+                                            {runner.stolenBases && runner.stolenBases > 0 ? (
+                                                <button
+                                                    onClick={() => onRunnerAction?.(runner.playerId, 'undo_steal')}
+                                                    className="px-2 py-1 bg-gray-100 border border-gray-300 text-gray-600 rounded hover:bg-gray-200 text-xs"
+                                                >
+                                                    盗塁取消
+                                                </button>
+                                            ) : null}
                                         </div>
                                     </div>
                                 ))}

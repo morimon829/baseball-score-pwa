@@ -6,7 +6,8 @@ export type InningResult =
     | '投飛' | '捕飛' | '一飛' | '二飛' | '三飛' | '遊飛' // Flyouts
     | '左飛' | '中飛' | '右飛' // Outfield Flyouts
     | '犠飛' | '犠打' | '打妨' | '守妨' // Others
-    | '失' | '野選'; // Errors/FC
+    | '失' | '野選' // Errors/FC
+    | '盗死' | '牽死'; // Caught Stealing / Picked Off
 
 export interface PlayerStats {
     atBats: number; // 打数
@@ -44,6 +45,7 @@ export interface ScoreEntry {
             reachedSecond?: boolean;
             reachedThird?: boolean;
             stolenBases?: number; // Number of SBs in this inning
+            caughtStealing?: boolean; // Caught Stealing (Out on base)
         }
     };
     defensiveErrors?: number;

@@ -55,7 +55,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     const isOut = (result: InningResult): boolean => {
         return ['振', '投ゴ', '捕ゴ', '一ゴ', '二ゴ', '三ゴ', '遊ゴ',
             '投飛', '捕飛', '一飛', '二飛', '三飛', '遊飛',
-            '左飛', '中飛', '右飛', '犠飛', '犠打'].includes(result);
+            '左飛', '中飛', '右飛', '犠飛', '犠打', '盗死', '牽死'].includes(result);
     };
 
     // Get Runners for current inning (excluding current selected player)
@@ -69,7 +69,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 if (!s) return null;
                 const r = s.inningResults[inning];
                 const d = s.details[inning];
-                if (!r || isOut(r) || d?.isRun) return null; // Not on base
+                if (!r || isOut(r) || d?.isRun || d?.caughtStealing) return null; // Not on base
                 if (p.id === excludePlayerId) return null; // Current batter
 
                 // Determine base - assume highest reached
@@ -78,35 +78,34 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 else if (d?.reachedSecond) currentBase = 2;
                 else if (d?.reachedFirst) currentBase = 1;
 
-                return { playerId: p.id, name: p.name, currentBase };
+                return { playerId: p.id, name: p.name || '不明', currentBase, stolenBases: d?.stolenBases || 0 };
             })
-            .filter((r): r is { playerId: string, name: string, currentBase: 1 | 2 | 3 } => r !== null);
+            .filter((r): r is { playerId: string, name: string, currentBase: 1 | 2 | 3, stolenBases: number } => r !== null);
     };
 
     const handleInput = (result: InningResult, isOutInput: boolean) => {
         if (!selectedCell) return;
         const { playerId, inning } = selectedCell;
 
-        // --- 3-Out Check Logic (Moved outside setGame to avoid double-trigger) ---
+        // --- 3-Out Check Logic ---
         const strictOuts = ['振', '投ゴ', '捕ゴ', '一ゴ', '二ゴ', '三ゴ', '遊ゴ',
             '投飛', '捕飛', '一飛', '二飛', '三飛', '遊飛',
-            '左飛', '中飛', '右飛', '犠打', '犠飛'];
+            '左飛', '中飛', '右飛', '犠打', '犠飛', '盗死', '牽死'];
 
         if (strictOuts.includes(result)) {
             const currentScores = activeTeam === 'visitor' ? game.scores.visitor : game.scores.home;
-            // Calculate outs BEFORE this new input for the current base inning
             const inningPrefix = inning.split('-')[0];
             const currentOuts = currentScores
                 .flatMap(s => Object.entries(s.inningResults)
                     .filter(([k]) => k === inningPrefix || k.startsWith(`${inningPrefix}-`))
                     .map(([_, r]) => r)
                 )
-                .filter(r => r && strictOuts.includes(r)).length;
+                .filter(r => r && strictOuts.includes(r)).length
+                + currentScores.flatMap(s => Object.entries(s.details)
+                    .filter(([k]) => k === inningPrefix || k.startsWith(`${inningPrefix}-`))
+                    .map(([_, d]) => d.caughtStealing ? 1 : 0)
+                ).reduce((a, b) => a + b, 0);
 
-            // Check if this new input makes it 3 outs
-            // Note: We should check if we are overwriting an existing out? 
-            // If we overwrite "Strikeout" with "Strikeout", count doesn't change.
-            // But usually we just add. For simplicity, we assume adding or updating non-out to out.
             const isOverwriteOut = (() => {
                 const s = currentScores.find(s => s.playerId === playerId);
                 const oldRes = s?.inningResults[inning];
@@ -115,36 +114,18 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
             if (!isOverwriteOut && currentOuts + 1 >= 3) {
                 setTimeout(() => {
-                    if (window.confirm('3アウトです。チェンジしますか？\n(OK: 攻守交替/次へ, Cancel: そのまま)')) {
+                    if (window.confirm('3アウトです。チェンジしますか？')) {
                         handleInningChange();
                     }
-                }, 300); // 300ms delay to allow UI to update first (e.g. show the Out in cell)
+                }, 300);
             }
         }
-        // -----------------------------------------------------------------------
 
         setGame(prev => {
-            // ... (existing update logic wrapper is complex, let's just insert checking logic in the setState callback or after)
-            // The previous logic was modifying `scores` which is local scope in the callback. 
-            // We need to return the new state. 
-            // To implement the alert, we need to know the *result* of the new state. 
-            // But we can't do async "confirm" inside setGame.
-
-            // Workaround: Use a separate useEffect to check for 3 outs? No, that triggers on load too.
-            // Best way: Calculate outs *before* setGame? No, we need new state.
-            // Calculate outs from `prev` + `current input`.
-
             const teamKey = activeTeam;
             const scores = [...prev.scores[teamKey]];
-            // ... (same update logic as above to get new scores)
-            // Let's copy the logic or trust that we can check *after* setGame via a ref or specific effect?
-
-            // Actually, we can check based on "Out" input.
-            // (Alert Logic moved outside)
-
-            // Continue with state update...
             let entryIndex = scores.findIndex(s => s.playerId === playerId);
-            // ... (rest of logic)
+            
             if (entryIndex === -1) {
                 scores.push({
                     playerId,
@@ -155,8 +136,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
             }
             const entry = { ...scores[entryIndex] };
             entry.inningResults = { ...entry.inningResults, [inning]: result };
-            // ...
-            // (Copying the rest of the logic from the file view to be safe)
+            
             if (!result) {
                 entry.details[inning] = { rbi: 0, isRun: false, stolenBases: 0 };
             } else {
@@ -164,7 +144,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     entry.details[inning] = { rbi: 0, isRun: false };
                 }
                 if (!isOutInput && !entry.details[inning].reachedFirst) {
-                    if (['安', '二', '三', '本', '四', '死', '敬遠', '失', '野選'].includes(result)) {
+                    if (['安', '二', '三', '本', '四', '死', '敬遠', '失', '野選', '打妨'].includes(result)) {
                         entry.details[inning].reachedFirst = true;
                     }
                     if (['二', '三', '本'].includes(result)) entry.details[inning].reachedSecond = true;
@@ -220,30 +200,65 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     };
 
     const handleRunnerAdvance = (playerId: string, base: 1 | 2 | 3 | 4, isSteal: boolean = false) => {
-        // Advance base
+        // Advance base (legacy support for simple advance, new runner actions use handleRunnerAction)
         if (base === 4) toggleRun(playerId, selectedCell?.inning || '1');
         else toggleBase(playerId, selectedCell?.inning || '1', base as any);
 
-        // Helper for Steal Count:
         if (isSteal) {
-            setGame(prev => {
-                const teamKey = activeTeam;
-                const scores = [...prev.scores[teamKey]];
-                const entryIndex = scores.findIndex(s => s.playerId === playerId);
-                if (entryIndex === -1) return prev;
-
-                const entry = { ...scores[entryIndex] };
-                const inning = selectedCell?.inning || '1';
-                const currentDetails = entry.details[inning] || { rbi: 0, isRun: false, stolenBases: 0 };
-
-                entry.details = {
-                    ...entry.details,
-                    [inning]: { ...currentDetails, stolenBases: (currentDetails.stolenBases || 0) + 1 }
-                };
-                scores[entryIndex] = entry;
-                return { ...prev, scores: { ...prev.scores, [teamKey]: scores } };
-            });
+            handleRunnerAction(playerId, 'steal', base as 1 | 2 | 3);
         }
+    };
+
+    const handleRunnerAction = (playerId: string, action: 'steal' | 'undo_steal' | 'caught_stealing', base?: 1 | 2 | 3) => {
+        if (action === 'steal' && base) {
+            toggleBase(playerId, selectedCell?.inning || '1', base);
+        }
+        
+        setGame(prev => {
+            const teamKey = activeTeam;
+            const scores = [...prev.scores[teamKey]];
+            const entryIndex = scores.findIndex(s => s.playerId === playerId);
+            if (entryIndex === -1) return prev;
+
+            const entry = { ...scores[entryIndex] };
+            const inning = selectedCell?.inning || '1';
+            const currentDetails = entry.details[inning] || { rbi: 0, isRun: false, stolenBases: 0 };
+
+            if (action === 'steal') {
+                entry.details = { ...entry.details, [inning]: { ...currentDetails, stolenBases: (currentDetails.stolenBases || 0) + 1 } };
+            } else if (action === 'undo_steal') {
+                const newDetails = { ...currentDetails, stolenBases: Math.max(0, (currentDetails.stolenBases || 0) - 1) };
+                if (newDetails.reachedThird) {
+                    newDetails.reachedThird = false;
+                } else if (newDetails.reachedSecond) {
+                    newDetails.reachedSecond = false;
+                }
+                entry.details = { ...entry.details, [inning]: newDetails };
+            } else if (action === 'caught_stealing') {
+                entry.details = { ...entry.details, [inning]: { ...currentDetails, caughtStealing: true } };
+            }
+
+            scores[entryIndex] = entry;
+            return { ...prev, scores: { ...prev.scores, [teamKey]: scores } };
+        });
+    };
+
+    const handleUpdateRbi = (rbi: number) => {
+        if (!selectedCell) return;
+        setGame(prev => {
+            const teamKey = activeTeam;
+            const scores = [...prev.scores[teamKey]];
+            const entryIndex = scores.findIndex(s => s.playerId === selectedCell.playerId);
+            if (entryIndex === -1) return prev;
+
+            const entry = { ...scores[entryIndex] };
+            const inning = selectedCell.inning;
+            const currentDetails = entry.details[inning] || { rbi: 0, isRun: false };
+
+            entry.details = { ...entry.details, [inning]: { ...currentDetails, rbi } };
+            scores[entryIndex] = entry;
+            return { ...prev, scores: { ...prev.scores, [teamKey]: scores } };
+        });
     };
 
     // Toggle Run (for simplicity, toggle when Result exists)
@@ -569,8 +584,13 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
     const currentOuts = currentScores.flatMap(s =>
         Object.entries(s.inningResults)
             .filter(([key]) => key === currentInningPrefix || key.startsWith(`${currentInningPrefix}-`))
-            .map(([_, res]) => res)
-    ).filter(r => r && isOut(r)).length;
+            .map(([key, res]) => ({ res, details: s.details[key] }))
+    ).reduce((total, item) => {
+        let outCount = 0;
+        if (item.res && isOut(item.res)) outCount++;
+        if (item.details?.caughtStealing) outCount++;
+        return total + outCount;
+    }, 0);
 
     // Check for 3 Outs - handled inside handleInput to avoid spam/double-triggers during state re-renders
 
@@ -1025,6 +1045,9 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 onSelect={handleInput}
                 hasRun={selectedCell ? (activeTeam === 'visitor' ? game.scores.visitor : game.scores.home).find(s => s.playerId === selectedCell.playerId)?.details[selectedCell.inning]?.isRun || false : false}
                 onToggleRun={() => selectedCell && toggleRun(selectedCell.playerId, selectedCell.inning)}
+                
+                currentRbi={selectedCell ? (activeTeam === 'visitor' ? game.scores.visitor : game.scores.home).find(s => s.playerId === selectedCell.playerId)?.details[selectedCell.inning]?.rbi || 0 : 0}
+                onUpdateRbi={handleUpdateRbi}
 
                 reachedFirst={selectedCell ? (activeTeam === 'visitor' ? game.scores.visitor : game.scores.home).find(s => s.playerId === selectedCell.playerId)?.details[selectedCell.inning]?.reachedFirst || false : false}
                 reachedSecond={selectedCell ? (activeTeam === 'visitor' ? game.scores.visitor : game.scores.home).find(s => s.playerId === selectedCell.playerId)?.details[selectedCell.inning]?.reachedSecond || false : false}
@@ -1035,6 +1058,7 @@ export const ScoreSheet: React.FC<Props> = ({ game: initialGame, onBack }) => {
                 onRunnerAdvance={(pid, base, isSteal) => {
                     handleRunnerAdvance(pid, base, isSteal);
                 }}
+                onRunnerAction={handleRunnerAction}
             />
 
             <PlayerSelectionModal
